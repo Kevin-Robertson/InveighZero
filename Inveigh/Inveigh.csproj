@@ -41,8 +41,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Common.cs" />
-    <Compile Include="Control.cs" />
+    <Compile Include="Util.cs" />
     <Compile Include="HTTP.cs" />
     <Compile Include="NBNS.cs" />
     <Compile Include="NTLM.cs" />

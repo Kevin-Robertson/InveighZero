@@ -2,10 +2,13 @@
 
 C# version of Inveigh. This is under development and currently missing a lot of features. I've done very little testing with this so use caution.
 
-## Current Features  
+## Current Features
+* DNS Spoofer    
 * LLMNR spoofer  
+* mDNS Spoofer  
 * NBNS spoofer (priv and unpriv)  
 * HTTP challenge/response capture  
+* Proxy challenge/response capture  
 * SMB challenge/response capture  
 
 ## Usage

