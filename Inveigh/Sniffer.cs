@@ -113,7 +113,7 @@ namespace Inveigh
 
                                         if (payloadBytes.Length > 0)
                                         {
-                                            SMBConnection(payloadBytes, snifferIP, sourceIPAddress.ToString(), Convert.ToString(tcpSourcePort), "139");
+                                            SMBConnection(payloadBytes, snifferIP, sourceIPAddress.ToString(), destinationIPAddress.ToString(), Convert.ToString(tcpSourcePort), "139");
                                         }
 
                                         session = sourceIPAddress.ToString() + ":" + Convert.ToString(tcpSourcePort);
@@ -129,7 +129,7 @@ namespace Inveigh
 
                                         if (payloadBytes.Length > 0)
                                         {
-                                            SMBConnection(payloadBytes, snifferIP, sourceIPAddress.ToString(), Convert.ToString(tcpSourcePort), "445");
+                                            SMBConnection(payloadBytes, snifferIP, sourceIPAddress.ToString(), destinationIPAddress.ToString(), Convert.ToString(tcpSourcePort), "445");
                                         }
 
                                         session = sourceIPAddress.ToString() + ":" + Convert.ToString(tcpSourcePort);
@@ -250,10 +250,26 @@ namespace Inveigh
 
                                         }
 
-                                        lock (Program.outputList)
+                                        if (String.Equals(destinationIPAddress.ToString(), snifferIP.ToString()))
                                         {
-                                            Program.outputList.Add(String.Format("[+] [{0}] DNS request for {1} received from {2} [{3}]", DateTime.Now.ToString("s"), dnsRequestHost, sourceIPAddress, dnsResponseMessage));
+
+                                            lock (Program.outputList)
+                                            {
+                                                Program.outputList.Add(String.Format("[+] [{0}] DNS request for {1} received from {2} [{3}]", DateTime.Now.ToString("s"), dnsRequestHost, sourceIPAddress, dnsResponseMessage));
+                                            }
+
                                         }
+                                        else
+                                        {
+
+                                            lock (Program.outputList)
+                                            {
+                                                Program.outputList.Add(String.Format("[+] [{0}] DNS request for {1} sent to {2} [{3}]", DateTime.Now.ToString("s"), dnsRequestHost, destinationIPAddress, "outgoing query"));
+                                            }
+
+                                        }
+
+                                        
 
                                         break;
 
@@ -556,19 +572,29 @@ namespace Inveigh
 
         }
 
-        public static void SMBConnection(byte[] field, string IP, string sourceIP, string sourcePort, string port)
+        public static void SMBConnection(byte[] field, string snifferIP, string sourceIP, string destinationIP, string sourcePort, string smbPort)
         {
             string payload = System.BitConverter.ToString(field);
             payload = payload.Replace("-", String.Empty);
             string session = sourceIP + ":" + sourcePort;
+            string sessionOutgoing = destinationIP + ":" + smbPort;
             int index = payload.IndexOf("FF534D42");
 
-            if (!Program.smbSessionTable.ContainsKey(session) && index > 0 && payload.Substring((index + 8), 2) == "72" && IP != sourceIP)
+            if (!Program.smbSessionTable.ContainsKey(session) && index > 0 && payload.Substring((index + 8), 2) == "72" && !String.Equals(sourceIP, snifferIP))
             {
 
                 lock (Program.outputList)
                 {
-                    Program.outputList.Add(String.Format("[+] [{0}] SMB({1}) negotiation request detected from {2}", DateTime.Now.ToString("s"), port, session));
+                    Program.outputList.Add(String.Format("[+] [{0}] SMB({1}) negotiation request detected from {2}", DateTime.Now.ToString("s"), smbPort, session));
+                }
+
+            }
+            else if (!Program.smbSessionTable.ContainsKey(session) && index > 0 && payload.Substring((index + 24), 4) == "0000" && String.Equals(sourceIP, snifferIP))
+            {
+
+                lock (Program.outputList)
+                {
+                    Program.outputList.Add(String.Format("[+] [{0}] SMB({1}) outgoing negotiation request detected to {2}", DateTime.Now.ToString("s"), sourcePort, sessionOutgoing));
                 }
 
             }
@@ -580,12 +606,21 @@ namespace Inveigh
 
             index = payload.IndexOf("FE534D42");
 
-            if (!Program.smbSessionTable.ContainsKey(session) && index > 0 && payload.Substring((index + 24), 4) == "0000" && IP != sourceIP)
+            if (!Program.smbSessionTable.ContainsKey(session) && index > 0 && payload.Substring((index + 24), 4) == "0000" && !String.Equals(sourceIP, snifferIP))
             {
 
                 lock (Program.outputList)
                 {
-                    Program.outputList.Add(String.Format("[+] [{0}] SMB({1}) negotiation request detected from {2}", DateTime.Now.ToString("s"), port, session));
+                    Program.outputList.Add(String.Format("[+] [{0}] SMB({1}) negotiation request detected from {2}", DateTime.Now.ToString("s"), smbPort, session));
+                }
+
+            }
+            else if (!Program.smbSessionTable.ContainsKey(session) && index > 0 && payload.Substring((index + 24), 4) == "0000" && String.Equals(sourceIP, snifferIP))
+            {
+
+                lock (Program.outputList)
+                {
+                    Program.outputList.Add(String.Format("[+] [{0}] SMB({1}) outgoing negotiation request detected to {2}", DateTime.Now.ToString("s"), sourcePort, sessionOutgoing));
                 }
 
             }
@@ -597,12 +632,21 @@ namespace Inveigh
 
             index = payload.IndexOf("2A864886F7120102020100");
 
-            if (index > 0 && !String.Equals(sourceIP, IP))
+            if (index > 0 && !String.Equals(sourceIP, snifferIP))
             {
 
                 lock (Program.outputList)
                 {
-                    Program.outputList.Add(String.Format("[+] [{0}] SMB({1}) authentication method is Kerberos for {2}", DateTime.Now.ToString("s"), port, session));
+                    Program.outputList.Add(String.Format("[+] [{0}] SMB({1}) authentication method is Kerberos from {2}", DateTime.Now.ToString("s"), smbPort, session));
+                }
+
+            }
+            else if (index > 0 && String.Equals(sourceIP, snifferIP))
+            {
+
+                lock (Program.outputList)
+                {
+                    Program.outputList.Add(String.Format("[+] [{0}] SMB({1}) outgoing authentication method is Kerberos to {2}", DateTime.Now.ToString("s"), sourcePort, sessionOutgoing));
                 }
 
             }

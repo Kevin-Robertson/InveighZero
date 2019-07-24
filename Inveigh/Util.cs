@@ -105,7 +105,7 @@ namespace Inveigh
             }
 
             if ((String.Equals(type, "LLMNR") && !Program.enabledLLMNR) || (String.Equals(type, "NBNS") && !Program.enabledNBNS) ||
-                (String.Equals(type, "MDNS") && !Program.enabledMDNS) || (String.Equals(type, "DNS") && !Program.enabledDNS))
+                (String.Equals(type, "MDNS") && !Program.enabledMDNS) || (String.Equals(type, "DNS") && !Program.enabledDNS && !String.Equals(sourceIP, mainIP)))
             {
                 responseMessage = "spoofer disabled";
             }

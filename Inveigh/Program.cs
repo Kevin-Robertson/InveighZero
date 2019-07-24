@@ -387,7 +387,7 @@ namespace Inveigh
 
                         default:
                             if (arg.StartsWith("-") || arg.StartsWith("/"))
-                                throw new ArgumentException(paramName: arg, message: "Invalid arg");
+                                throw new ArgumentException(paramName: arg, message: "Invalid Parameter");
                             break;
                     }
 
@@ -645,6 +645,7 @@ namespace Inveigh
                 outputList.Add(String.Format("[+] HTTP Authentication = {0}", argHTTPAuth));
                 if (!String.Equals(argHTTPIP, "0.0.0.0")) outputList.Add(String.Format("[+] HTTP IP = {0}", argHTTPIP));
                 if (!String.Equals(argHTTPPort, "80")) outputList.Add(String.Format("[+] HTTP Port = {0}", argHTTPPort));
+                if (!String.IsNullOrEmpty(argHTTPResponse)) outputList.Add("[+] HTTP Response = Enabled");
             }
 
             if (String.Equals(argHTTPAuth,"BASIC") || String.Equals(argProxyAuth, "BASIC") || String.Equals(argWPADAuth, "BASIC")) { outputList.Add(String.Format("[+] Basic Authentication Realm = {0}", argHTTPBasicRealm)); }
@@ -1318,6 +1319,13 @@ namespace Inveigh
             if (nullarg || String.Equals(arg, "HTTPPORT"))
             {
                 Console.WriteLine(" -HTTPPort                Default = 80: TCP port for the HTTP listener.");
+            }
+
+            if (nullarg || String.Equals(arg, "HTTPRESPONSE"))
+            {
+                Console.WriteLine(" -HTTPResponse            Content to serve as the default HTTP/HTTPS/Proxy response. This response will not be");
+                Console.WriteLine("                          used for wpad.dat requests. This parameter will not be used if HTTPDir is set. Use C#");
+                Console.WriteLine("                          character escapes and newlines where necessary.");
             }
 
             if (nullarg || String.Equals(arg, "INSPECT"))
