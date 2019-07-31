@@ -41,6 +41,9 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="DNS.cs" />
+    <Compile Include="LLMNR.cs" />
+    <Compile Include="MDNS.cs" />
     <Compile Include="Util.cs" />
     <Compile Include="HTTP.cs" />
     <Compile Include="NBNS.cs" />

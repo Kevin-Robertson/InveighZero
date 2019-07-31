@@ -39,7 +39,21 @@ namespace Inveigh
                 httpListener.Server.LingerState = new LingerOption(true,0);
             }
 
-            httpListener.Start();
+
+            try
+            {
+                httpListener.Start();
+            }
+            catch
+            {
+
+                lock (Program.outputList)
+                {
+                    Program.outputList.Add(String.Format("[-] Error starting unprivileged {1} listener, check IP and port usage.", DateTime.Now.ToString("s"), httpType));
+                }
+
+                throw;
+            }
 
             while (!Program.exitInveigh)
             {
@@ -466,7 +480,7 @@ namespace Inveigh
 
         }
 
-        public static string GetNTLMChallengeBase64(bool ntlmess, string challenge, string ipAddress, string srcPort, int dstPort, string computerName, string netbiosDomain, string dnsDomain)
+        public static string GetNTLMChallengeBase64(bool ntlmESS, string challenge, string ipAddress, string srcPort, int dstPort, string computerName, string netbiosDomain, string dnsDomain)
         {
             byte[] httpTimestamp = System.BitConverter.GetBytes(DateTime.Now.ToFileTime());
             byte[] challengeArray = new byte[8];
@@ -505,7 +519,7 @@ namespace Inveigh
             Program.httpSessionTable[session] = httpChallenge;
             byte[] httpNTLMNegotiationFlags = { 0x05, 0x82, 0x81, 0x0A };
 
-            if (ntlmess)
+            if (ntlmESS)
             {
                 httpNTLMNegotiationFlags[2] = 0x89;
             }
@@ -552,8 +566,7 @@ namespace Inveigh
             ms.Write((new byte[4] { 0x07, 0x00, 0x08, 0x00 }), 0, 4);
             ms.Write(httpTimestamp, 0, httpTimestamp.Length);
             ms.Write((new byte[6] { 0x00, 0x00, 0x00, 0x00, 0x0a, 0x0a }), 0, 6);
-            byte[] httpNTLMBytes = ms.ToArray();
-            string ntlmChallengeBase64 = System.Convert.ToBase64String(httpNTLMBytes);
+            string ntlmChallengeBase64 = System.Convert.ToBase64String(ms.ToArray());
             string ntlm = "NTLM " + ntlmChallengeBase64;
 
             return ntlm;

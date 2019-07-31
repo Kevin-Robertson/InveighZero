@@ -8,8 +8,8 @@ using System.IO;
 using System.Threading;
 using System.Collections;
 using System.Diagnostics;
-using System.Security.Principal;
 using System.Globalization;
+using System.Text.RegularExpressions;
 
 namespace Inveigh
 {
@@ -35,10 +35,12 @@ namespace Inveigh
         public static bool consoleOutput = true;
         public static bool exitInveigh = false;
         public static bool enabledConsoleUnique = false;
+        public static bool enabledElevated = false;
         public static bool enabledFileOutput = false;
         public static bool enabledFileUnique = false;
         public static bool enabledHTTP = false;
         public static bool enabledDNS = false;
+        public static bool enabledInspect = false;
         public static bool enabledNBNS = false;
         public static bool enabledLLMNR = false;
         public static bool enabledMDNS = false;
@@ -56,15 +58,15 @@ namespace Inveigh
 
         static void Main(string[] args)
         {
-            //parameters
+            //begin parameters - set defaults as needed before compile
             string argChallenge = "";
             string argConsoleUnique = "Y";
             string argConsoleStatus = "0";
             string argDNS = "N";
             string argDNSTTL = "30";
-            string argElevatedPrivilege = "Auto";
+            string argElevated = "Y";
             string argFileOutput = "Y";
-            string argFileUnique = "N";
+            string argFileUnique = "Y";
             string argHelp = "";
             string argHTTP = "Y";
             string argHTTPAuth = "NTLM";
@@ -84,8 +86,8 @@ namespace Inveigh
             string argNBNSTTL = "165";
             string[] argNBNSTypes = { "00", "20" };
             string argPcap = "N";
-            string[] argPcapPortTCP = { "139", "445" };
-            string[] argPcapPortUDP = null;
+            string[] argPcapTCP = { "139", "445" };
+            string[] argPcapUDP = null;
             string argProxy = "N";
             string argProxyAuth = "NTLM";
             string[] argProxyIgnore = { "Firefox" };
@@ -103,6 +105,7 @@ namespace Inveigh
             string argWPADIP = "";
             string argWPADPort = "";
             string argWPADResponse = "function FindProxyForURL(url,host) {return \"DIRECT\";}";
+            //end parameters
 
             bool isArgNBNS = false;
             bool isSession = false;
@@ -157,9 +160,9 @@ namespace Inveigh
                             argDNSTTL = args[entry.index + 1].ToUpper();
                             break;
 
-                        case "-ELEVATEDPRIVILEGE":
-                        case "/ELEVATEDPRIVILEGE":
-                            argElevatedPrivilege = args[entry.index + 1].ToUpper();
+                        case "-ELEVATED":
+                        case "/ELEVATED":
+                            argElevated = args[entry.index + 1].ToUpper();
                             break;
 
                         case "-FILEOUTPUT":
@@ -272,14 +275,14 @@ namespace Inveigh
                             argPcap = args[entry.index + 1].ToUpper();
                             break;
 
-                        case "-PCAPPORTTCP":
-                        case "/PCAPPORTTCP":
-                            argPcapPortTCP = args[entry.index + 1].ToUpper().Split(',');
+                        case "-PCAPTCP":
+                        case "/PCAPTCP":
+                            argPcapTCP = args[entry.index + 1].ToUpper().Split(',');
                             break;
 
-                        case "-PCAPPORTUDP":
-                        case "/PCAPPORTUDP":
-                            argPcapPortUDP = args[entry.index + 1].ToUpper().Split(',');
+                        case "-PCAPUDP":
+                        case "/PCAPUDP":
+                            argPcapUDP = args[entry.index + 1].ToUpper().Split(',');
                             break;
 
                         case "-PROXY":
@@ -394,47 +397,51 @@ namespace Inveigh
                 }
             }
 
-            if (!String.IsNullOrEmpty(argIP)) { try { IPAddress.Parse(argIP); } catch { throw new ArgumentException("IP value must be an IP address"); } }
-            if (!String.IsNullOrEmpty(argSpooferIP)) { try { IPAddress.Parse(argSpooferIP); } catch { throw new ArgumentException("SpooferIP value must be an IP address"); } }
-            if (!String.IsNullOrEmpty(argWPADIP)) { try { IPAddress.Parse(argWPADIP); } catch { throw new ArgumentException("WPADIP value must be an IP address"); } }
-            try { IPAddress.Parse(argHTTPIP); } catch { throw new ArgumentException("HTTPIP value must be an IP address"); }
-            try { IPAddress.Parse(argProxyIP); } catch { throw new ArgumentException("ProxyIP value must be an IP address"); }
-
-            if (!String.IsNullOrEmpty(argWPADPort)) { try { Int32.Parse(argWPADPort); } catch { throw new ArgumentException("WPADPort value must be an integer"); } }
-            try { Int32.Parse(argHTTPPort); } catch { throw new ArgumentException("HTTPPort value must be a integer"); }
-            try { Int32.Parse(argProxyPort); } catch { throw new ArgumentException("ProxyPort value must be a integer"); }
+            Regex r = new Regex("^[A-Fa-f0-9]{16}$"); if (!String.IsNullOrEmpty(argChallenge) && !r.IsMatch(argChallenge)) { throw new ArgumentException("Challenge is invalid"); }
             try { consoleStatus = Int32.Parse(argConsoleStatus); } catch { throw new ArgumentException("ConsoleStatus value must be a integer"); }
-            try { runCount = Int32.Parse(argRunCount); } catch { throw new ArgumentException("RunCount value must be a integer"); }
-            try { runTime = Int32.Parse(argRunTime); } catch { throw new ArgumentException("RunTime value must be a integer"); }
-            try { Int32.Parse(argDNSTTL); } catch { throw new ArgumentException("DNSTTL value must be a integer"); }
-            try { Int32.Parse(argLLMNRTTL); } catch { throw new ArgumentException("LLMNRTTL value must be a integer"); }
-            try { Int32.Parse(argMDNSTTL); } catch { throw new ArgumentException("mDNSTTL value must be a integer"); }
-            try { Int32.Parse(argNBNSTTL); } catch { throw new ArgumentException("NBNSTTL value must be a integer"); }
-
+            if (!String.Equals(argConsoleUnique, "Y") && !String.Equals(argConsoleUnique, "N")) throw new ArgumentException("ConsoleUnique value must be Y or N");
             if (!String.Equals(argDNS, "Y") && !String.Equals(argDNS, "N")) throw new ArgumentException("DNS value must be Y or N");
+            try { Int32.Parse(argDNSTTL); } catch { throw new ArgumentException("DNSTTL value must be a integer"); }
+            if (!String.Equals(argFileOutput, "Y") && !String.Equals(argFileOutput, "N")) throw new ArgumentException("FileOutput value must be Y or N");
+            if (String.Equals(argFileOutput, "Y") && !System.IO.Directory.Exists(argFileOutputDirectory)) { throw new ArgumentException("FileOutputDirectory is invalid"); }
+            if (!String.Equals(argFileUnique, "Y") && !String.Equals(argFileUnique, "N")) throw new ArgumentException("FileUnique value must be Y or N");
             if (!String.Equals(argHTTP, "Y") && !String.Equals(argHTTP, "N")) throw new ArgumentException("HTTP value must be Y or N");
+            try { IPAddress.Parse(argHTTPIP); } catch { throw new ArgumentException("HTTPIP value must be an IP address"); }
+            try { Int32.Parse(argHTTPPort); } catch { throw new ArgumentException("HTTPPort value must be a integer"); }
+            if (!String.IsNullOrEmpty(argIP)) { try { IPAddress.Parse(argIP); } catch { throw new ArgumentException("IP value must be an IP address"); } }
             if (!String.Equals(argHTTPAuth, "ANONYMOUS") && !String.Equals(argHTTPAuth, "BASIC") && !String.Equals(argHTTPAuth, "NTLM") && !String.Equals(argHTTPAuth, "NTLMNOESS")) throw new ArgumentException("HTTPAuth value must be Anonymous, Basic, NTLM, or NTLMNoESS");
             if (!String.Equals(argLLMNR, "Y") && !String.Equals(argLLMNR, "N")) throw new ArgumentException("LLMNR value must be Y or N");
+            try { Int32.Parse(argLLMNRTTL); } catch { throw new ArgumentException("LLMNRTTL value must be a integer"); }
             if (!String.Equals(argMachineAccounts, "Y") && !String.Equals(argMachineAccounts, "N")) throw new ArgumentException("MachineAccounts value must be Y or N");
             if (!String.Equals(argMDNS, "Y") && !String.Equals(argMDNS, "N")) throw new ArgumentException("mDNS value must be Y or N");
+            try { Int32.Parse(argMDNSTTL); } catch { throw new ArgumentException("mDNSTTL value must be a integer"); }
             if (argMDNSTypes != null && argMDNSTypes.Length > 0) { foreach (string type in argMDNSTypes) { if (!String.Equals(type, "QM") && !String.Equals(type, "QU")) { throw new ArgumentException("MDNSTypes valid values are QM and QU"); } } }
             if (!String.Equals(argNBNS, "Y") && !String.Equals(argNBNS, "N")) throw new ArgumentException("NBNS value must be Y or N");
+            try { Int32.Parse(argNBNSTTL); } catch { throw new ArgumentException("NBNSTTL value must be a integer"); }
+            if (argNBNSTypes != null && argNBNSTypes.Length > 0) { foreach (string type in argNBNSTypes) { if (!String.Equals(type, "00") && !String.Equals(type, "03") && !String.Equals(type, "20") &&
+                    !String.Equals(type, "1B") && !String.Equals(type, "1C") && !String.Equals(type, "1D") && !String.Equals(type, "1E")) { throw new ArgumentException("NBNSTypes valid values are 00, 03, 20, 1B, 1C, 1D, and 1E"); } } }
+            if (!String.Equals(argPcap, "Y") && !String.Equals(argPcap, "N")) throw new ArgumentException("Pcap value must be Y or N");
+            if (argPcapTCP != null && argPcapTCP.Length > 0) { foreach (string port in argPcapTCP) { if (!String.Equals(port, "ALL")) { try { Int32.Parse(port); } catch { throw new ArgumentException("PcapPortTCP values must be an integer"); } } } }
+            if (argPcapUDP != null && argPcapUDP.Length > 0) { foreach (string port in argPcapUDP) { if (!String.Equals(port, "ALL")) { try { Int32.Parse(port); } catch { throw new ArgumentException("PcapPortUDP values must be an integer"); } } } }
             if (!String.Equals(argProxy, "Y") && !String.Equals(argProxy, "N")) throw new ArgumentException("Proxy value must be Y or N");
             if (!String.Equals(argProxyAuth, "BASIC") && !String.Equals(argProxyAuth, "NTLM") && !String.Equals(argProxyAuth, "NTLMNOESS")) throw new ArgumentException("ProxyAuth value must be Basic, NTLM, or NTLMNoESS");
-            if (argNBNSTypes != null && argNBNSTypes.Length > 0) { foreach (string type in argNBNSTypes) { if (!String.Equals(type, "00") && !String.Equals(type, "03") && !String.Equals(type, "20") &&
-                        !String.Equals(type, "1B") && !String.Equals(type, "1C") && !String.Equals(type, "1D") && !String.Equals(type, "1E")) { throw new ArgumentException("NBNSTypes valid values are 00, 03, 20, 1B, 1C, 1D, and 1E"); } } }
-            if (!String.Equals(argPcap, "Y") && !String.Equals(argPcap, "N")) throw new ArgumentException("Pcap value must be Y or N");
-            if (argPcapPortTCP != null && argPcapPortTCP.Length > 0) { foreach (string port in argPcapPortTCP) { if (!String.Equals(port, "ALL")) { try { Int32.Parse(port); } catch { throw new ArgumentException("PcapPortTCP values must be an integer"); } } } }
-            if (argPcapPortUDP != null && argPcapPortUDP.Length > 0) { foreach (string port in argPcapPortUDP) { if (!String.Equals(port, "ALL")) { try { Int32.Parse(port); } catch { throw new ArgumentException("PcapPortUDP values must be an integer"); } } } }
+            try { IPAddress.Parse(argProxyIP); } catch { throw new ArgumentException("ProxyIP value must be an IP address"); }
+            try { Int32.Parse(argProxyPort); } catch { throw new ArgumentException("ProxyPort value must be a integer"); }          
+            try { runCount = Int32.Parse(argRunCount); } catch { throw new ArgumentException("RunCount value must be a integer"); }
+            try { runTime = Int32.Parse(argRunTime); } catch { throw new ArgumentException("RunTime value must be a integer"); }
             if (!String.Equals(argSMB, "Y") && !String.Equals(argSMB, "N")) throw new ArgumentException("SMB value must be Y or N");
-            if (!String.Equals(argProxyAuth, "BASIC") && !String.Equals(argWPADAuth, "NTLM") && !String.Equals(argWPADAuth,"NTLMNOESS") && !String.Equals(argWPADAuth,"ANONYMOUS")) throw new ArgumentException("WPADAuth value must be Anonymous, Basic, NTLM, or NTLMNoESS");
-            if (String.Equals(argFileOutput,"Y") && !System.IO.Directory.Exists(argFileOutputDirectory)) { throw new ArgumentException("FileOutputDirectory is invalid"); }
-
+            if (!String.IsNullOrEmpty(argSpooferIP)) { try { IPAddress.Parse(argSpooferIP); } catch { throw new ArgumentException("SpooferIP value must be an IP address"); } }
+            if (!String.Equals(argProxyAuth, "BASIC") && !String.Equals(argWPADAuth, "NTLM") && !String.Equals(argWPADAuth, "NTLMNOESS") && !String.Equals(argWPADAuth, "ANONYMOUS")) throw new ArgumentException("WPADAuth value must be Anonymous, Basic, NTLM, or NTLMNoESS");
+            if (!String.IsNullOrEmpty(argWPADIP)) { try { IPAddress.Parse(argWPADIP); } catch { throw new ArgumentException("WPADIP value must be an IP address"); } }
+            if (!String.IsNullOrEmpty(argWPADPort)) { try { Int32.Parse(argWPADPort); } catch { throw new ArgumentException("WPADPort value must be an integer"); } }
+                   
             if (String.Equals(argConsoleUnique, "Y")) { enabledConsoleUnique = true; }
+            if (String.Equals(argElevated, "Y")) { enabledElevated = true; }
             if (String.Equals(argFileOutput, "Y")) { enabledFileOutput = true; }
             if (String.Equals(argFileUnique, "Y")) { enabledFileUnique = true; }
             if (String.Equals(argDNS, "Y")) { enabledDNS = true; }
             if (String.Equals(argHTTP, "Y")) { enabledHTTP = true; }
+            if (argInspect) { enabledInspect = true; }
             if (String.Equals(argLLMNR, "Y")) { enabledLLMNR = true; }
             if (String.Equals(argMDNS, "Y")) { enabledMDNS = true; }
             if (String.Equals(argPcap, "Y")) { enabledPcap = true; }
@@ -532,28 +539,13 @@ namespace Inveigh
                 argSpooferIP = argIP;
             }
 
-            bool isElevated;
-
-            if (String.Equals(argElevatedPrivilege, "Auto"))
+            if (!enabledElevated)
             {
-
-                using (WindowsIdentity identity = WindowsIdentity.GetCurrent())
-                {
-                    WindowsPrincipal principal = new WindowsPrincipal(identity);
-                    isElevated = principal.IsInRole(WindowsBuiltInRole.Administrator);
-                }
-
-            }
-            else if (String.Equals(argElevatedPrivilege, "Y"))
-            {
-                isElevated = true;
-            }
-            else
-            {
-                isElevated = false;
+                enabledPcap = false;
+                enabledSMB = false;
             }
 
-            if (!isElevated && !isArgNBNS)
+            if (!enabledElevated && !isArgNBNS)
             {
                 enabledNBNS = true;
             }
@@ -561,13 +553,9 @@ namespace Inveigh
             if (argInspect)
             {
 
-                if (isElevated)
+                if (enabledElevated)
                 {
-                    enabledDNS = false;
                     enabledHTTP = false;
-                    enabledLLMNR = false;
-                    enabledMDNS = false;
-                    enabledNBNS = false;
                     enabledProxy = false;
                     enabledSMB = false;
                 }
@@ -602,17 +590,22 @@ namespace Inveigh
                 argWPADResponse = String.Concat("function FindProxyForURL(url,host) {", wpadDirectHosts, "return \"PROXY", argWPADIP,":",argWPADPort,"; DIRECT\";}");
             }
 
+            string version = "0.9";
             string optionStatus = "";
-            outputList.Add(String.Format("[*] Inveigh started at {0}", DateTime.Now.ToString("s")));
-            if (isElevated) optionStatus = "Enabled";
+            outputList.Add(String.Format("[*] Inveigh {0} started at {1}", version, DateTime.Now.ToString("s")));
+            if (enabledElevated) optionStatus = "Enabled";
             else optionStatus = "Disabled";
-            outputList.Add(String.Format("[+] Elevated Privilege Mode = {0}", optionStatus));
+            outputList.Add(String.Format("[+] Elevated Privilege Mode = Enabled", optionStatus));
+            if (argInspect) { outputList.Add("[+] Inspect Only Mode = Enabled"); }
             outputList.Add(String.Format("[+] Primary IP Address = {0}", argIP));
             outputList.Add(String.Format("[+] Spoofer IP Address = {0}", argSpooferIP));
             if (argSpooferHostsIgnore != null) outputList.Add(String.Format("[+] Spoofer Hosts Ignore = {0}", String.Join(",", argSpooferHostsIgnore)));
             if (argSpooferHostsReply != null) outputList.Add(String.Format("[+] Spoofer Hosts Reply = {0}", String.Join(",", argSpooferHostsReply)));
             if (argSpooferIPsIgnore != null) outputList.Add(String.Format("[+] Spoofer IPs Ignore = {0}", String.Join(",", argSpooferIPsIgnore)));
             if (argSpooferIPsReply != null) outputList.Add(String.Format("[+] Spoofer IPs Reply = {0}", String.Join(",", argSpooferIPsReply)));
+            if (enabledElevated) optionStatus = "Enabled";
+            else optionStatus = "Disabled";
+            outputList.Add(String.Format("[+] Packet Sniffer = {0}", optionStatus));
             if (enabledDNS) optionStatus = "Enabled";
             else optionStatus = "Disabled";
             outputList.Add(String.Format("[+] DNS Spoofer = {0}", optionStatus));
@@ -642,6 +635,7 @@ namespace Inveigh
 
             if (enabledHTTP)
             {
+                if (!String.IsNullOrEmpty(argChallenge)) outputList.Add(String.Format("[+] HTTP NTLM Challenge = {0}", argChallenge));
                 outputList.Add(String.Format("[+] HTTP Authentication = {0}", argHTTPAuth));
                 if (!String.Equals(argHTTPIP, "0.0.0.0")) outputList.Add(String.Format("[+] HTTP IP = {0}", argHTTPIP));
                 if (!String.Equals(argHTTPPort, "80")) outputList.Add(String.Format("[+] HTTP Port = {0}", argHTTPPort));
@@ -652,8 +646,8 @@ namespace Inveigh
 
             if (enabledProxy)
             {
-                if (argPcapPortTCP != null && argPcapPortTCP.Length > 0) outputList.Add(String.Format("[+] Pcap TCP Ports = {0}", String.Join(",", argPcapPortTCP)));
-                if (argPcapPortUDP != null && argPcapPortUDP.Length > 0) outputList.Add(String.Format("[+] Pcap UDP Ports = {0}", String.Join(",", argPcapPortUDP)));
+                if (argPcapTCP != null && argPcapTCP.Length > 0) outputList.Add(String.Format("[+] Pcap TCP Ports = {0}", String.Join(",", argPcapTCP)));
+                if (argPcapUDP != null && argPcapUDP.Length > 0) outputList.Add(String.Format("[+] Pcap UDP Ports = {0}", String.Join(",", argPcapUDP)));
             }
 
             if (enabledProxy) optionStatus = "Enabled";
@@ -671,7 +665,7 @@ namespace Inveigh
             if (argWPADDirectHosts != null) outputList.Add(String.Format("[+] WPAD Direct Hosts = {0}", String.Join(",", argWPADDirectHosts)));
             if (!String.IsNullOrEmpty(argWPADIP)) outputList.Add(String.Format("[+] WPAD IP = {0}", argWPADIP));
             if (!String.IsNullOrEmpty(argWPADPort)) outputList.Add(String.Format("[+] WPAD Port = {0}", argWPADPort));
-            if (enabledSMB && isElevated) optionStatus = "Enabled";
+            if (enabledSMB) optionStatus = "Enabled";
             else optionStatus = "Disabled";
             outputList.Add(String.Format("[+] SMB Capture = {0}", optionStatus));
             if (enabledMachineAccounts) optionStatus = "Enabled";
@@ -693,19 +687,45 @@ namespace Inveigh
             else if (runTime > 1) outputList.Add(String.Format("[+] Run Time = {0} Minutes", runTime));
             outputList.Add(String.Format("[*] Press ESC to access console"));
 
-            if (isElevated && (enabledLLMNR || enabledNBNS || enabledSMB))
+            if (enabledElevated && (enabledLLMNR || enabledNBNS || enabledSMB))
             {
-                Thread snifferSpooferThread = new Thread(() => Sniffer.SnifferSpoofer(argIP, argSpooferIP, argDNSTTL, argLLMNRTTL, argMDNSTTL, argNBNSTTL, argMDNSTypes, argNBNSTypes, argPcapPortTCP, argPcapPortUDP));
+                Thread snifferSpooferThread = new Thread(() => Sniffer.SnifferSpoofer(argIP, argSpooferIP, argDNSTTL, argLLMNRTTL, argMDNSTTL, argNBNSTTL, argMDNSTypes, argNBNSTypes, argPcapTCP, argPcapUDP));
                 snifferSpooferThread.Start();
             }
             else
             {
-                Thread nbnsListenerThread = new Thread(() => NBNS.NBNSListener(argIP, argSpooferIP, argNBNSTTL, argNBNSTypes));
-                nbnsListenerThread.Start();
+
+                if (enabledNBNS)
+                {
+                    Thread nbnsListenerThread = new Thread(() => NBNS.NBNSListener(argIP, argSpooferIP, argNBNSTTL, argNBNSTypes));
+                    nbnsListenerThread.Start();
+                }
+
+                if(enabledLLMNR)
+                {
+                    Thread llmnrListenerThread = new Thread(() => LLMNR.LLMNRListener(argIP, argSpooferIP, argLLMNRTTL));
+                    llmnrListenerThread.Start();
+                }
+
+                if (enabledMDNS)
+                {
+                    Thread mdnsListenerThread = new Thread(() => MDNS.MDNSListener(argIP, argSpooferIP, argMDNSTTL, argMDNSTypes));
+                    mdnsListenerThread.Start();
+                }
+
+                if (enabledDNS)
+                {
+                    Thread dnsListenerThread = new Thread(() => DNS.DNSListener(argIP, argSpooferIP, argDNSTTL));
+                    dnsListenerThread.Start();
+                }
+
             }
 
-            Thread httpListenerThread = new Thread(() => HTTP.HTTPListener(argHTTPIP, argHTTPPort, argChallenge, computerName, dnsDomain, netbiosDomain, argHTTPBasicRealm, argHTTPAuth, argHTTPResponse, argWPADAuth, argWPADResponse, argWPADAuthIgnore, argProxyIgnore, false));
-            httpListenerThread.Start();
+            if (enabledHTTP)
+            {
+                Thread httpListenerThread = new Thread(() => HTTP.HTTPListener(argHTTPIP, argHTTPPort, argChallenge, computerName, dnsDomain, netbiosDomain, argHTTPBasicRealm, argHTTPAuth, argHTTPResponse, argWPADAuth, argWPADResponse, argWPADAuthIgnore, argProxyIgnore, false));
+                httpListenerThread.Start();
+            }
 
             if (enabledProxy)
             {
@@ -862,26 +882,22 @@ namespace Inveigh
                     case "HELP":
                         Console.Clear();
                         Console.WriteLine("");
-                        Console.WriteLine("====================================================================================================================");
+                        Console.WriteLine("==============================================================================================================");
                         Console.WriteLine(" Inveigh Console Commands");
-                        Console.WriteLine("====================================================================================================================\n");
-                        Console.WriteLine("  GET CONSOLE                        | get queued console output");
-                        Console.WriteLine("  GET LOG                            | get log");
-                        Console.WriteLine("  GET NTLMV1                         | get captured NTLMv1 challenge/response hashes");
-                        Console.WriteLine("  GET NTLMV2                         | get captured NTLMv2 challenge/response hashes");
-                        Console.WriteLine("  GET NTLMV1 SEARCHSTRING            | get captured NTLMv1 challenge/response hashes matching search string");
-                        Console.WriteLine("  GET NTLMV2 SEARCHSTRING            | get captured NTLMv2 challenge/response hashes matching search string");
-                        Console.WriteLine("  GET NTLMV1UNIQUE                   | get one captured NTLMv1 challenge/response hash per username");
-                        Console.WriteLine("  GET NTLMV2UNIQUE                   | get one captured NTLMv2 challenge/response hash per username");
-                        Console.WriteLine("  GET NTLMV1UNIQUE SEARCHSTRING      | get one captured NTLMv1 challenge/response hash matching search string");
-                        Console.WriteLine("  GET NTLMV2UNIQUE SEARCHSTRING      | get one captured NTLMv2 challenge/response hash matching search string");
-                        Console.WriteLine("  GET NTLMV1USERNAMES                | get usernames and source IPs for captured NTLMv1 challenge/response hashes");
-                        Console.WriteLine("  GET NTLMV2USERNAMES                | get usernames and source IPs for captured NTLMv2 challenge/response hashes");
-                        Console.WriteLine("  GET CLEARTEXT                      | get captured cleartext credentials");
-                        Console.WriteLine("  GET CLEARTEXTUNIQUE                | get unique captured cleartext credentials");
-                        Console.WriteLine("  RESUME                             | resume real time console output");
-                        Console.WriteLine("  STOP                               | stop Inveigh\n");
-                        Console.WriteLine("====================================================================================================================");
+                        Console.WriteLine("==============================================================================================================\n");
+                        Console.WriteLine("  GET CONSOLE                   | get queued console output");
+                        Console.WriteLine("  GET LOG                       | get log entries; add search string to filter results");
+                        Console.WriteLine("  GET NTLMV1                    | get captured NTLMv1 hashes; add search string to filter results");
+                        Console.WriteLine("  GET NTLMV2                    | get captured NTLMv2 hashes; add search string to filter results");
+                        Console.WriteLine("  GET NTLMV1UNIQUE              | get one captured NTLMv1 hash per user; add search string to filter results");
+                        Console.WriteLine("  GET NTLMV2UNIQUE              | get one captured NTLMv2 hash per user; add search string to filter results");
+                        Console.WriteLine("  GET NTLMV1USERNAMES           | get usernames and source IPs for captured NTLMv1 challenge/response hashes");
+                        Console.WriteLine("  GET NTLMV2USERNAMES           | get usernames and source IPs for captured NTLMv2 challenge/response hashes");
+                        Console.WriteLine("  GET CLEARTEXT                 | get captured cleartext credentials");
+                        Console.WriteLine("  GET CLEARTEXTUNIQUE           | get unique captured cleartext credentials");
+                        Console.WriteLine("  RESUME                        | resume real time console output");
+                        Console.WriteLine("  STOP                          | stop Inveigh\n");
+                        Console.WriteLine("==============================================================================================================");
                         break;
 
                     case "RESUME":
@@ -1271,9 +1287,8 @@ namespace Inveigh
 
             if (nullarg || String.Equals(arg, "ELEVATEDPRIVILEGE"))
             {
-                Console.WriteLine(" -ElevatedPrivilege       Default = Auto: (Auto/Y/N) Set the privilege mode. Auto will determine if Inveigh");
-                Console.WriteLine("                          is running with elevated privilege.If so, options that require elevated privilege");
-                Console.WriteLine("                          can be used.");
+                Console.WriteLine(" -Elevated                Default = Y: (Y/N) Set the privilege mode. Elevated privilege features require an");
+                Console.WriteLine("                          elevated administrator shell.");
             }
 
             if (nullarg || String.Equals(arg, "FILEOUTPUT"))
@@ -1378,12 +1393,14 @@ namespace Inveigh
 
             if (nullarg || String.Equals(arg, "NBNSTTL"))
             {
-                Console.WriteLine(" -NBNSTTL                  Default = 165 Seconds: NBNS TTL in seconds for the response packet.");
+                Console.WriteLine(" -NBNSTTL                 Default = 165 Seconds: NBNS TTL in seconds for the response packet.");
             }
 
             if (nullarg || String.Equals(arg, "NBNSTYPES"))
             {
-                Console.WriteLine(" -NBNSTypes               Default = Disabled: (Y/N) Enable/Disable NBNS brute force spoofer.");
+                Console.WriteLine(" -NBNSTypes               Default = 00,20: Comma separated list of NBNS types to spoof. Note, not all types have");
+                Console.WriteLine("                          been tested. Types include 00 = Workstation Service, 03 = Messenger Service, 20 = Server");
+                Console.WriteLine("                          Service, 1B = Domain Name");
             }
 
             if (nullarg || String.Equals(arg, "PCAP"))

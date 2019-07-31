@@ -129,11 +129,11 @@ namespace Inveigh
 
                                 if (Program.enabledConsoleUnique && Program.ntlmv2UsernameList.Contains(String.Concat(sourceIP, " ", domain, "\\", user)))
                                 {
-                                    Program.outputList.Add(String.Format("[+] [{0}] {1}({2}) NTLMv2 challenge/response captured from {3}({4}):{5}{6}", DateTime.Now.ToString("s"), protocol, protocolPort, sourceIP, host, System.Environment.NewLine, "[not unique]"));
+                                    Program.outputList.Add(String.Format("[+] [{0}] {1}({2}) NTLMv2 captured for {3}\\{4} from {5}({6}):{7}:{8}{9}", DateTime.Now.ToString("s"), protocol, protocolPort, domain, user, sourceIP, host, sourcePort, System.Environment.NewLine,  "[not unique]"));
                                 }
                                 else
                                 {
-                                    Program.outputList.Add(String.Format("[+] [{0}] {1}({2}) NTLMv2 challenge/response captured from {3}({4}):", DateTime.Now.ToString("s"), protocol, protocolPort, sourceIP, host));
+                                    Program.outputList.Add(String.Format("[+] [{0}] {1}({2}) NTLMv2 captured for {3}\\{4} from {5}({6}):{7}:", DateTime.Now.ToString("s"), protocol, protocolPort, domain, user, sourceIP, host, sourcePort));
                                     Program.outputList.Add(ntlmV2Hash);
                                 }
 
@@ -145,7 +145,7 @@ namespace Inveigh
                                         Program.ntlmv2FileList.Add(ntlmV2Hash);
                                     }
 
-                                    Program.outputList.Add(String.Format("[!] [{0}] {1}({2}) NTLMv2 challenge/response written to {3}", DateTime.Now.ToString("s"), protocol, protocolPort, String.Concat(Program.argFilePrefix, "-NTLMv2.txt")));
+                                    Program.outputList.Add(String.Format("[!] [{0}] {1}({2}) NTLMv2 written to {3}", DateTime.Now.ToString("s"), protocol, protocolPort, String.Concat(Program.argFilePrefix, "-NTLMv2.txt")));
                                 }
 
                                 if (!Program.ntlmv2UsernameList.Contains(String.Concat(sourceIP, " ", domain, "\\", user)))
@@ -167,13 +167,13 @@ namespace Inveigh
                             }
                             else
                             {
-                                Program.outputList.Add(String.Format("[+] [{0}] {1} NTLMv2 challenge/response ignored from {2}({3}):{4}{5}", DateTime.Now.ToString("s"), protocol, sourceIP, host, System.Environment.NewLine, "[machine account]"));
+                                Program.outputList.Add(String.Format("[+] [{0}] {1}({2}) NTLMv2 ignored for {3}\\{4} from {5}({6}):{7}:{8}{9}", DateTime.Now.ToString("s"), protocol, protocolPort, domain, user, sourceIP, host, sourcePort, System.Environment.NewLine, "[machine account]"));
                             }
 
                         }
                         else
                         {
-                            Program.outputList.Add(String.Format("[+] [{0}] {1} NTLMv2 challenge/response ignored from {2}({3}):{4}{5}", DateTime.Now.ToString("s"), protocol, sourceIP, host, System.Environment.NewLine, "[capture disabled]"));
+                            Program.outputList.Add(String.Format("[+] [{0}] {1}({2}) NTLMv2 ignored for {3}\\{4} from {5}({6}):{7}:{8}{9}", DateTime.Now.ToString("s"), protocol, protocolPort, domain, user, sourceIP, host, sourcePort, System.Environment.NewLine, "[capture disabled]"));
                         }
 
                     }
@@ -192,17 +192,13 @@ namespace Inveigh
                             if (Program.enabledMachineAccounts || (!Program.enabledMachineAccounts && !user.EndsWith("$")))
                             {
 
-                                if (!Program.enabledSMB)
+                                if (Program.ntlmv1UsernameList.Contains(String.Concat(sourceIP, " ", domain, "\\", user)))
                                 {
-                                    Program.outputList.Add(String.Format("[+] [{0}] {1} NTLMv1 challenge/response captured from {2}({3}):{4}{5}", DateTime.Now.ToString("s"), protocol, sourceIP, host, System.Environment.NewLine, "[capture disabled]"));
-                                }
-                                else if (Program.ntlmv1UsernameList.Contains(String.Concat(sourceIP, " ", domain, "\\", user)))
-                                {
-                                    Program.outputList.Add(String.Format("[+] [{0}] {1} NTLMv1 challenge/response captured from {2}({3}):{4}{5}", DateTime.Now.ToString("s"), protocol, sourceIP, host, System.Environment.NewLine, "[not unique]"));
+                                    Program.outputList.Add(String.Format("[+] [{0}] {1}({2}) NTLMv1 captured for {3}\\{4} from {5}({6}):{7}:{8}{9}", DateTime.Now.ToString("s"), protocol, protocolPort, domain, user, sourceIP, host, sourcePort, System.Environment.NewLine, "[not unique]"));
                                 }
                                 else
                                 {
-                                    Program.outputList.Add(String.Format("[+] [{0}] {1} NTLMv1 challenge/response captured from {2}({3}):", DateTime.Now.ToString("s"), protocol, sourceIP, host));
+                                    Program.outputList.Add(String.Format("[+] [{0}] {1}({2}) NTLMv1 captured for {3}\\{4} from {5}({6}):{7}", DateTime.Now.ToString("s"), protocol, protocolPort, domain, user, sourceIP, host, sourcePort));
                                     Program.outputList.Add(ntlmV1Hash);
                                 }
 
@@ -214,7 +210,7 @@ namespace Inveigh
                                         Program.ntlmv1FileList.Add(ntlmV1Hash);
                                     }
 
-                                    Program.outputList.Add(String.Format("[!] [{0}] {1} NTLMv1 challenge/response written to {2}", DateTime.Now.ToString("s"), protocol, String.Concat(Program.argFilePrefix, "-NTLMv1.txt")));
+                                    Program.outputList.Add(String.Format("[!] [{0}] {1}({2}) NTLMv1 written to {3}", DateTime.Now.ToString("s"), protocol, protocolPort, String.Concat(Program.argFilePrefix, "-NTLMv1.txt")));
                                 }
 
                                 if (!Program.ntlmv1UsernameList.Contains(String.Concat(sourceIP, " ", domain, "\\", user)))
@@ -236,15 +232,24 @@ namespace Inveigh
                             }
                             else
                             {
-                                Program.outputList.Add(String.Format("[+] [{0}] {1} NTLMv1 challenge/response ignored from {2}({3}):{4}{5}", DateTime.Now.ToString("s"), protocol, sourceIP, host, System.Environment.NewLine, "[machine account]"));
+                                Program.outputList.Add(String.Format("[+] [{0}] {1}({2}) NTLMv1 ignored for {3}\\{4} from {5}({6}):{7}:{8}{9}", DateTime.Now.ToString("s"), protocol, protocolPort, domain, user, sourceIP, host, sourcePort, System.Environment.NewLine, "[machine account]"));
                             }
 
                         }
                         else
                         {
-                            Program.outputList.Add(String.Format("[+] [{0}] {1} NTLMv1 challenge/response ignored from {2}({3}):{4}{5}", DateTime.Now.ToString("s"), protocol, sourceIP, host, System.Environment.NewLine, "[capture disabled]"));
+                            Program.outputList.Add(String.Format("[+] [{0}] {1}({2}) NTLMv1 ignored for {3}\\{4} from {5}({6}):{7}:{7}{8}", DateTime.Now.ToString("s"), protocol, protocolPort, domain, user, sourceIP, host, sourcePort, System.Environment.NewLine, "[capture disabled]"));
                         }
 
+                    }
+
+                }
+                else if(ntlmLength == 0)
+                {
+
+                    lock (Program.outputList)
+                    {
+                        Program.outputList.Add(String.Format("[+] [{0}] {1}({2}) NTLM null response from {5}({6}):{7}", DateTime.Now.ToString("s"), protocol, protocolPort, domain, user, sourceIP, host, sourcePort));
                     }
 
                 }

@@ -10,8 +10,26 @@ namespace Inveigh
 
         public static void NBNSListener(string IP, string spooferIP, string nbnsTTL, string[] nbnsTypes)
         {
+            byte[] spooferIPData = IPAddress.Parse(spooferIP).GetAddressBytes();
+            byte[] ttlNBNS = BitConverter.GetBytes(Int32.Parse(nbnsTTL));
+            Array.Reverse(ttlNBNS);
             IPEndPoint nbnsEndpoint = new IPEndPoint(IPAddress.Broadcast, 137);
-            UdpClient nbnsClient = new UdpClient(137);
+            UdpClient nbnsClient;
+
+            try
+            {
+                nbnsClient = new UdpClient(137);
+            }
+            catch
+            {
+
+                lock (Program.outputList)
+                {
+                    Program.outputList.Add(String.Format("[-] Error starting unprivileged NBNS spoofer, UDP port sharing does not work on all versions of Windows.", DateTime.Now.ToString("s")));
+                }
+
+                throw;
+            }
 
             while (!Program.exitInveigh)
             {
@@ -27,8 +45,6 @@ namespace Inveigh
                     if (BitConverter.ToString(nbnsQuestionsAnswerRRs) == "00-01-00-00" && BitConverter.ToString(nbnsAdditionalRRs) != "00-01")
                     {
                         string nbnsResponseMessage = "";
-                        byte[] ttlNBNS = BitConverter.GetBytes(Int32.Parse(nbnsTTL));
-                        Array.Reverse(ttlNBNS);
                         byte[] nbnsTransactionID = new byte[2];
                         System.Buffer.BlockCopy(udpPayload, 0, nbnsTransactionID, 0, 2);
                         byte[] nbnsRequestType = new byte[2];
@@ -37,7 +53,6 @@ namespace Inveigh
                         byte[] nbnsRequest = new byte[udpPayload.Length - 20];
                         System.Buffer.BlockCopy(udpPayload, 13, nbnsRequest, 0, nbnsRequest.Length);
                         string nbnsRequestHost = BytesToNBNSQuery(nbnsRequest);
-                        byte[] spooferIPData = IPAddress.Parse(spooferIP).GetAddressBytes();
                         IPAddress sourceIPAddress = nbnsEndpoint.Address;
                         nbnsResponseMessage = Util.CheckRequest(nbnsRequestHost, sourceIPAddress.ToString(), IP.ToString(), "NBNS");
 

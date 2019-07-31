@@ -78,6 +78,14 @@ namespace Inveigh
         {
             string responseMessage = "response sent";
             bool isRepeat = false;
+            string[] nameRequestSplit;
+            string nameRequestHost = "";
+
+            if (nameRequest.Contains("."))
+            {
+                nameRequestSplit = nameRequest.Split('.');
+                nameRequestHost = nameRequestSplit[0];
+            }
 
             if (!Program.enabledSpooferRepeat)
             {
@@ -104,16 +112,22 @@ namespace Inveigh
 
             }
 
-            if ((String.Equals(type, "LLMNR") && !Program.enabledLLMNR) || (String.Equals(type, "NBNS") && !Program.enabledNBNS) ||
+            if (Program.enabledInspect)
+            {
+                responseMessage = "inspect only";
+            }
+            else if ((String.Equals(type, "LLMNR") && !Program.enabledLLMNR) || (String.Equals(type, "NBNS") && !Program.enabledNBNS) ||
                 (String.Equals(type, "MDNS") && !Program.enabledMDNS) || (String.Equals(type, "DNS") && !Program.enabledDNS && !String.Equals(sourceIP, mainIP)))
             {
                 responseMessage = "spoofer disabled";
             }
-            else if (Program.argSpooferHostsIgnore != null && Array.Exists(Program.argSpooferHostsIgnore, element => element == nameRequest.ToUpper()))
+            else if (Program.argSpooferHostsIgnore != null && Program.argSpooferHostsIgnore.Length > 0 && (Array.Exists(Program.argSpooferHostsIgnore, element => element == nameRequest.ToUpper()) ||
+                (!String.IsNullOrEmpty(nameRequestHost) && Array.Exists(Program.argSpooferHostsIgnore, element => element == nameRequestHost.ToUpper()))))
             {
                 responseMessage = String.Concat(nameRequest, " is on ignore list");
             }
-            else if (Program.argSpooferHostsReply != null && !Array.Exists(Program.argSpooferHostsReply, element => element == nameRequest.ToUpper()))
+            else if (Program.argSpooferHostsReply != null && Program.argSpooferHostsReply.Length > 0 && (!Array.Exists(Program.argSpooferHostsReply, element => element == nameRequest.ToUpper()) &&
+                (!String.IsNullOrEmpty(nameRequestHost) && !Array.Exists(Program.argSpooferHostsReply, element => element == nameRequestHost.ToUpper()))))
             {
                 responseMessage = String.Concat(nameRequest, " not on reply list");
             }
@@ -125,7 +139,7 @@ namespace Inveigh
             {
                 responseMessage = String.Concat(sourceIP, " not on reply list");
             }
-            else if(String.Equals(sourceIP, mainIP))
+            else if(String.Equals(type, "NBNS") && String.Equals(sourceIP, mainIP))
             {
                 responseMessage = "local query";
             }
