@@ -102,9 +102,8 @@ namespace Inveigh
                                 tcpHeaderLength >>= 4;
                                 tcpHeaderLength *= 4;
                                 byte tcpFlags = binaryReader.ReadByte();
-                                binaryReader.ReadBytes(7);
-                                int tcpPayloadLength = packetLength - (int)headerLength - (int)tcpHeaderLength;
-                                byte[] payloadBytes = binaryReader.ReadBytes(tcpPayloadLength);
+                                binaryReader.ReadBytes(tcpHeaderLength - 15);
+                                byte[] payloadBytes = binaryReader.ReadBytes(packetLength);
                                 string challenge = "";
                                 string session = "";
                                 string tcpSession = sourceIPAddress.ToString() + ":" + Convert.ToString(tcpSourcePort);
@@ -203,7 +202,7 @@ namespace Inveigh
 
                                         session = destinationIPAddress.ToString() + ":" + Convert.ToString(tcpDestinationPort);
 
-                                        if (!string.IsNullOrEmpty(challenge) && destinationIP != sourceIP)
+                                        if (!String.IsNullOrEmpty(challenge) && destinationIP != sourceIP)
                                         {
 
                                             if (!String.Equals(destinationIP, snifferIP))
@@ -229,7 +228,6 @@ namespace Inveigh
                                         }
 
                                         break;
-
                                 }
 
                                 if (Program.enabledPcap && (pcapTCP != null && pcapTCP.Length > 0 && (Array.Exists(pcapTCP, element => element == tcpSourcePort.ToString()) || 
@@ -337,6 +335,7 @@ namespace Inveigh
                                         {
                                             string nbnsResponseMessage = "";
                                             udpLength += 12;
+                                            Array.Reverse(udpSourcePort);
                                             byte[] ttlNBNS = BitConverter.GetBytes(Int32.Parse(nbnsTTL));
                                             Array.Reverse(ttlNBNS);
                                             byte[] nbnsTransactionID = new byte[2];
@@ -344,6 +343,8 @@ namespace Inveigh
                                             byte[] nbnsRequestType = new byte[2];
                                             System.Buffer.BlockCopy(udpPayload, 43, nbnsRequestType, 0, 2);
                                             string nbnsQueryType = NBNS.NBNSQueryType(nbnsRequestType);
+                                            byte[] nbnsType = new byte[1];
+                                            System.Buffer.BlockCopy(udpPayload, 47, nbnsType, 0, 1);
                                             byte[] nbnsRequest = new byte[udpPayload.Length - 20];
                                             System.Buffer.BlockCopy(udpPayload, 13, nbnsRequest, 0, nbnsRequest.Length);
                                             string nbnsRequestHost = NBNS.BytesToNBNSQuery(nbnsRequest);
@@ -352,13 +353,13 @@ namespace Inveigh
                                             if (Program.enabledNBNS && String.Equals(nbnsResponseMessage, "response sent"))
                                             {
 
-                                                if (Array.Exists(nbnsTypes, element => element == nbnsQueryType))
+                                                if (Array.Exists(nbnsTypes, element => element == nbnsQueryType) && !String.Equals(BitConverter.ToString(nbnsType),"21"))
                                                 {
 
                                                     using (MemoryStream ms = new MemoryStream())
                                                     {
                                                         ms.Write((new byte[2] { 0x00, 0x89 }), 0, 2);
-                                                        ms.Write((new byte[2] { 0x00, 0x89 }), 0, 2);
+                                                        ms.Write(udpSourcePort, 0, 2);
                                                         ms.Write(Util.IntToByteArray2((int)udpLength), 0, 2);
                                                         ms.Write((new byte[2] { 0x00, 0x00 }), 0, 2);
                                                         ms.Write(nbnsTransactionID, 0, nbnsTransactionID.Length);
@@ -376,6 +377,10 @@ namespace Inveigh
                                                         nbnsSendSocket.Close();
                                                     }
 
+                                                }
+                                                else if (String.Equals(BitConverter.ToString(nbnsType), "21"))
+                                                {
+                                                    nbnsResponseMessage = "NBSTAT request";
                                                 }
                                                 else
                                                 {
@@ -531,7 +536,7 @@ namespace Inveigh
                                             byte[] llmnrRequestLength = new byte[1];
                                             System.Buffer.BlockCopy(udpPayload, 12, llmnrRequestLength, 0, 1);
                                             System.Buffer.BlockCopy(udpPayload, 13, llmnrRequest, 0, llmnrRequest.Length);
-                                            string llmnrRequestHost = System.Text.Encoding.UTF8.GetString(llmnrRequest);
+                                            string llmnrRequestHost = Util.ParseNameQuery(12, udpPayload);
                                             llmnrResponseMessage = Util.CheckRequest(llmnrRequestHost, sourceIPAddress.ToString(), snifferIP.ToString(), "LLMNR");
 
                                             if (Program.enabledLLMNR && String.Equals(llmnrResponseMessage, "response sent"))

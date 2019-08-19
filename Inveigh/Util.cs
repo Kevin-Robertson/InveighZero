@@ -52,8 +52,8 @@ namespace Inveigh
             if (length > 0)
             {
                 byte[] fieldExtract = new byte[length - 1];
-                System.Buffer.BlockCopy(field, start, fieldExtract, 0, fieldExtract.Length);
-                string payload = System.BitConverter.ToString(fieldExtract);
+                Buffer.BlockCopy(field, start, fieldExtract, 0, fieldExtract.Length);
+                string payload = BitConverter.ToString(fieldExtract);
                 payload = payload.Replace("-00", String.Empty);
                 string[] payloadArray = payload.Split('-');
 

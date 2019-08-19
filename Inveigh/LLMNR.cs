@@ -56,7 +56,7 @@ namespace Inveigh
                         byte[] llmnrRequestLength = new byte[1];
                         System.Buffer.BlockCopy(udpPayload, 12, llmnrRequestLength, 0, 1);
                         System.Buffer.BlockCopy(udpPayload, 13, llmnrRequest, 0, llmnrRequest.Length);
-                        string llmnrRequestHost = System.Text.Encoding.UTF8.GetString(llmnrRequest);
+                        string llmnrRequestHost = Util.ParseNameQuery(12, udpPayload);
                         IPAddress sourceIPAddress = llmnrEndpoint.Address;
                         llmnrResponseMessage = Util.CheckRequest(llmnrRequestHost, sourceIPAddress.ToString(), IP.ToString(), "LLMNR");
 

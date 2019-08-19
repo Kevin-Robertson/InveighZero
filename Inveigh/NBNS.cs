@@ -50,6 +50,8 @@ namespace Inveigh
                         byte[] nbnsRequestType = new byte[2];
                         System.Buffer.BlockCopy(udpPayload, 43, nbnsRequestType, 0, 2);
                         string nbnsQueryType = NBNSQueryType(nbnsRequestType);
+                        byte[] nbnsType = new byte[1];
+                        System.Buffer.BlockCopy(udpPayload, 47, nbnsType, 0, 1);
                         byte[] nbnsRequest = new byte[udpPayload.Length - 20];
                         System.Buffer.BlockCopy(udpPayload, 13, nbnsRequest, 0, nbnsRequest.Length);
                         string nbnsRequestHost = BytesToNBNSQuery(nbnsRequest);
@@ -59,7 +61,7 @@ namespace Inveigh
                         if (Program.enabledNBNS && String.Equals(nbnsResponseMessage, "response sent"))
                         {
 
-                            if (Array.Exists(nbnsTypes, element => element == nbnsQueryType))
+                            if (Array.Exists(nbnsTypes, element => element == nbnsQueryType) && !String.Equals(BitConverter.ToString(nbnsType), "21"))
                             {
                                 using (MemoryStream ms = new MemoryStream())
                                 {
@@ -78,6 +80,10 @@ namespace Inveigh
                                     nbnsClient = new UdpClient(137);
                                 }
 
+                            }
+                            else if (String.Equals(BitConverter.ToString(nbnsType), "21"))
+                            {
+                                nbnsResponseMessage = "NBSTAT request";
                             }
                             else
                             {
@@ -115,7 +121,7 @@ namespace Inveigh
             {
                 nbnsQuery += new System.String(Convert.ToChar(Convert.ToInt16(character, 16)), 1);
             }
-
+            
             if (nbnsQuery.Contains("CA"))
             {
                 nbnsQuery = nbnsQuery.Substring(0, nbnsQuery.IndexOf("CA"));
@@ -143,18 +149,33 @@ namespace Inveigh
             }
             while (i < nbnsQuerySubtracted.Length - 1);
 
+            if (nbnsQuery.StartsWith("ABAC") && nbnsQuery.EndsWith("AC"))
+            {
+                nbnsQueryHost = nbnsQueryHost.Substring(2);
+                nbnsQueryHost = nbnsQueryHost.Substring(0, nbnsQueryHost.Length - 1);
+                nbnsQueryHost = String.Concat("<01><02>", nbnsQueryHost, "<02>");
+            }
+
             return nbnsQueryHost;
         }
 
         public static string NBNSQueryType(byte[] field)
         {
-            string nbnsQuery1 = BitConverter.ToString(field);
+            string nbnsQuery = BitConverter.ToString(field);
             string nbnsQueryType = "";
 
-            switch (nbnsQuery1)
+            switch (nbnsQuery)
             {
                 case "41-41":
                     nbnsQueryType = "00";
+                    break;
+
+                case "41-42":
+                    nbnsQueryType = "01";
+                    break;
+
+                case "41-43":
+                    nbnsQueryType = "02";
                     break;
 
                 case "41-44":

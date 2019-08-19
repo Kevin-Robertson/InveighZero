@@ -13,7 +13,7 @@ namespace Inveigh
             int index = payload.IndexOf("4E544C4D53535000");
             string challenge = "";
 
-            if (index > 0 && payload.Substring((index + 16), 8) == "02000000")
+            if (index > 0 && String.Equals(payload.Substring((index + 16), 8),"02000000"))
             {
                 challenge = payload.Substring((index + 48), 16);
                 uint targetNameLength = Util.UInt16DataLength(((index + 24) / 2), field);
@@ -24,36 +24,45 @@ namespace Inveigh
                 string dnsComputerName = "";
                 string dnsDomainName = "";
 
-                if (targetInfoFlag == "1")
+                try
                 {
-                    int targetInfoIndex = ((index + 80) / 2) + (int)targetNameLength + 16;
-                    byte targetInfoItemType = field[targetInfoIndex];
-                    int i = 0;
 
-                    while (targetInfoItemType != 0 && i < 10)
+                    if (targetInfoFlag == "1")
                     {
-                        uint targetInfoItemLength = Util.UInt16DataLength((targetInfoIndex + 2), field);
+                        int targetInfoIndex = ((index + 80) / 2) + (int)targetNameLength + 16;
+                        byte targetInfoItemType = field[targetInfoIndex];
+                        int i = 0;
 
-                        switch (targetInfoItemType)
+                        while (targetInfoItemType != 0 && i < 10)
                         {
-                            case 2:
-                                netBIOSDomainName = Util.DataToString((targetInfoIndex + 4), (int)targetInfoItemLength, field);
-                                break;
+                            uint targetInfoItemLength = Util.UInt16DataLength((targetInfoIndex + 2), field);
 
-                            case 3:
-                                dnsComputerName = Util.DataToString((targetInfoIndex + 4), (int)targetInfoItemLength, field);
-                                break;
+                            switch (targetInfoItemType)
+                            {
+                                case 2:
+                                    netBIOSDomainName = Util.DataToString((targetInfoIndex + 4), (int)targetInfoItemLength, field);
+                                    break;
 
-                            case 4:
-                                dnsDomainName = Util.DataToString((targetInfoIndex + 4), (int)targetInfoItemLength, field);
-                                break;
+                                case 3:
+                                    dnsComputerName = Util.DataToString((targetInfoIndex + 4), (int)targetInfoItemLength, field);
+                                    break;
+
+                                case 4:
+                                    dnsDomainName = Util.DataToString((targetInfoIndex + 4), (int)targetInfoItemLength, field);
+                                    break;
+                            }
+
+                            targetInfoIndex += (int)targetInfoItemLength + 4;
+                            targetInfoItemType = field[targetInfoIndex];
+                            i++;
                         }
 
-                        targetInfoIndex += (int)targetInfoItemLength + 4;
-                        targetInfoItemType = field[targetInfoIndex];
-                        i++;
                     }
 
+                }
+                catch
+                {
+                    Program.outputList.Add(String.Format("[-] [{0}] NTLM challenge target info parsing failed", DateTime.Now.ToString("s")));
                 }
 
             }

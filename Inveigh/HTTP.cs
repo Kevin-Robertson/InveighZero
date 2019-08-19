@@ -68,7 +68,7 @@ namespace Inveigh
                     bool proxyIgnoreMatch = false;
                     bool wpadAuthIgnoreMatch = false;
                     bool ntlmESS = false;
-                    byte[] httpHeaderContentType = System.Text.Encoding.UTF8.GetBytes("Content-Type: text/html");
+                    byte[] httpHeaderContentType = Encoding.UTF8.GetBytes("Content-Type: text/html");
                     byte[] httpHeaderAuthenticate = null;
                     byte[] httpHeaderAuthenticateData = null;
                     byte[] httpHeaderCacheControl = null;
@@ -289,7 +289,7 @@ namespace Inveigh
 
                                     if (!String.IsNullOrEmpty(httpResponse))
                                     {
-                                        httpHeaderCacheControl = System.Text.Encoding.UTF8.GetBytes("Cache-Control: no-cache, no-store");
+                                        httpHeaderCacheControl = Encoding.UTF8.GetBytes("Cache-Control: no-cache, no-store");
                                     }
                                     else
                                     {
@@ -338,23 +338,23 @@ namespace Inveigh
 
                         if (!String.IsNullOrEmpty(wpadResponse) && !proxyIgnoreMatch && String.Equals(httpRawURL, "/wpad.dat") && httpClientClose)
                         {
-                            httpHeaderContentType = System.Text.Encoding.UTF8.GetBytes("Content-Type: application/x-ns-proxy-autoconfig");
-                            httpMessage = System.Text.Encoding.UTF8.GetBytes(wpadResponse);
+                            httpHeaderContentType = Encoding.UTF8.GetBytes("Content-Type: application/x-ns-proxy-autoconfig");
+                            httpMessage = Encoding.UTF8.GetBytes(wpadResponse);
                         }
                         else if (!String.IsNullOrEmpty(httpResponse))
                         {
-                            httpMessage = System.Text.Encoding.UTF8.GetBytes(httpResponse);
+                            httpMessage = Encoding.UTF8.GetBytes(httpResponse);
                         }
 
-                        byte[] httpTimestamp = System.Text.Encoding.UTF8.GetBytes(DateTime.Now.ToString("R"));
+                        byte[] httpTimestamp = Encoding.UTF8.GetBytes(DateTime.Now.ToString("R"));
 
                         if ((httpAuth.StartsWith("NTLM") && !String.Equals(httpRawURL, "/wpad.dat")) || (wpadAuth.StartsWith("NTLM") && String.Equals(httpRawURL, "/wpad.dat")))
                         {
-                            httpHeaderAuthenticateData = System.Text.Encoding.UTF8.GetBytes(authorizationNTLM);
+                            httpHeaderAuthenticateData = Encoding.UTF8.GetBytes(authorizationNTLM);
                         }
                         else if ((String.Equals(httpAuth, "BASIC") && !String.Equals(httpRawURL, "/wpad.dat")) || String.Equals(wpadAuth, "BASIC") && String.Equals(httpRawURL, "/wpad.dat"))
                         {
-                            httpHeaderAuthenticateData = System.Text.Encoding.UTF8.GetBytes(String.Concat("Basic realm=", httpBasicRealm));
+                            httpHeaderAuthenticateData = Encoding.UTF8.GetBytes(String.Concat("Basic realm=", httpBasicRealm));
                         }
 
                         using (MemoryStream msHTTP = new MemoryStream())
@@ -367,12 +367,12 @@ namespace Inveigh
 
                             if (httpConnectionHeaderClose)
                             {
-                                byte[] httpHeaderConnection = System.Text.Encoding.UTF8.GetBytes("Connection: close");
+                                byte[] httpHeaderConnection = Encoding.UTF8.GetBytes("Connection: close");
                                 msHTTP.Write(httpHeaderConnection, 0, httpHeaderConnection.Length);
                                 msHTTP.Write((new byte[2] { 0x0d, 0x0a }), 0, 2);
                             }
 
-                            byte[] httpHeaderServer = System.Text.Encoding.UTF8.GetBytes("Server: Microsoft-HTTPAPI/2.0");
+                            byte[] httpHeaderServer = Encoding.UTF8.GetBytes("Server: Microsoft-HTTPAPI/2.0");
                             msHTTP.Write(httpHeaderServer, 0, httpHeaderServer.Length);
                             msHTTP.Write((new byte[2] { 0x0d, 0x0a }), 0, 2);
                             msHTTP.Write((new byte[6] { 0x44, 0x61, 0x74, 0x65, 0x3a, 0x20 }), 0, 6);
@@ -388,7 +388,7 @@ namespace Inveigh
                                 httpContentLength = "Content-Length: 0";
                             }
 
-                            byte[] httpHeaderContentLength = System.Text.Encoding.UTF8.GetBytes(httpContentLength);
+                            byte[] httpHeaderContentLength = Encoding.UTF8.GetBytes(httpContentLength);
                             msHTTP.Write(httpHeaderContentLength, 0, httpHeaderContentLength.Length);
                             msHTTP.Write((new byte[2] { 0x0d, 0x0a }), 0, 2);
 

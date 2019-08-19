@@ -788,6 +788,17 @@ namespace Inveigh
                                     Console.WriteLine(consoleList[0]);
                                     Console.ResetColor();
                                 }
+                                else if (consoleList[0].Contains("[response sent]"))
+                                {
+                                    int outputIndex = (consoleList[0].Substring(5)).IndexOf("[") + 6;
+                                    string outputStart = consoleList[0].Substring(0, outputIndex);
+                                    string outputEnd = consoleList[0].Substring(outputIndex).Replace("]", "");
+                                    Console.Write(outputStart);
+                                    Console.ForegroundColor = ConsoleColor.Green;
+                                    Console.Write(outputEnd);
+                                    Console.ResetColor();
+                                    Console.WriteLine("]");
+                                }
                                 else
                                 {
                                     Console.WriteLine(consoleList[0]);
@@ -823,6 +834,17 @@ namespace Inveigh
                                 Console.ForegroundColor = ConsoleColor.Yellow;
                                 Console.WriteLine(entry);
                                 Console.ResetColor();
+                            }
+                            else if (entry.Contains("[response sent]"))
+                            {
+                                int outputIndex = (entry.Substring(5)).IndexOf("[") + 6;
+                                string outputStart = entry.Substring(0, outputIndex);
+                                string outputEnd = entry.Substring(outputIndex).Replace("]", "");
+                                Console.Write(outputStart);
+                                Console.ForegroundColor = ConsoleColor.Green;
+                                Console.Write(outputEnd);
+                                Console.ResetColor();
+                                Console.WriteLine("]");
                             }
                             else
                             {
@@ -1147,6 +1169,17 @@ namespace Inveigh
                             Console.ForegroundColor = ConsoleColor.Yellow;
                             Console.WriteLine(consoleList[0]);
                             Console.ResetColor();
+                        }
+                        else if (consoleList[0].Contains("[response sent]"))
+                        {
+                            int outputIndex = (consoleList[0].Substring(5)).IndexOf("[") + 6;
+                            string outputStart = consoleList[0].Substring(0,outputIndex);
+                            string outputEnd = consoleList[0].Substring(outputIndex).Replace("]","");
+                            Console.Write(outputStart);
+                            Console.ForegroundColor = ConsoleColor.Green;
+                            Console.Write(outputEnd);
+                            Console.ResetColor();
+                            Console.WriteLine("]");
                         }
                         else
                         {
