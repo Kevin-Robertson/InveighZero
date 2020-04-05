@@ -75,7 +75,7 @@ namespace Inveigh
             string argHTTPPort = "80";
             string argHTTPResponse = "";
             string argIP = "";
-            bool argInspect = false; 
+            bool argInspect = false;
             string argLLMNR = "Y";
             string argLLMNRTTL = "30";
             string argMachineAccounts = "N";
@@ -418,15 +418,21 @@ namespace Inveigh
             if (argMDNSTypes != null && argMDNSTypes.Length > 0) { foreach (string type in argMDNSTypes) { if (!String.Equals(type, "QM") && !String.Equals(type, "QU")) { throw new ArgumentException("MDNSTypes valid values are QM and QU"); } } }
             if (!String.Equals(argNBNS, "Y") && !String.Equals(argNBNS, "N")) throw new ArgumentException("NBNS value must be Y or N");
             try { Int32.Parse(argNBNSTTL); } catch { throw new ArgumentException("NBNSTTL value must be a integer"); }
-            if (argNBNSTypes != null && argNBNSTypes.Length > 0) { foreach (string type in argNBNSTypes) { if (!String.Equals(type, "00") && !String.Equals(type, "03") && !String.Equals(type, "20") &&
-                    !String.Equals(type, "1B") && !String.Equals(type, "1C") && !String.Equals(type, "1D") && !String.Equals(type, "1E")) { throw new ArgumentException("NBNSTypes valid values are 00, 03, 20, 1B, 1C, 1D, and 1E"); } } }
+            if (argNBNSTypes != null && argNBNSTypes.Length > 0)
+            {
+                foreach (string type in argNBNSTypes)
+                {
+                    if (!String.Equals(type, "00") && !String.Equals(type, "03") && !String.Equals(type, "20") &&
+!String.Equals(type, "1B") && !String.Equals(type, "1C") && !String.Equals(type, "1D") && !String.Equals(type, "1E")) { throw new ArgumentException("NBNSTypes valid values are 00, 03, 20, 1B, 1C, 1D, and 1E"); }
+                }
+            }
             if (!String.Equals(argPcap, "Y") && !String.Equals(argPcap, "N")) throw new ArgumentException("Pcap value must be Y or N");
             if (argPcapTCP != null && argPcapTCP.Length > 0) { foreach (string port in argPcapTCP) { if (!String.Equals(port, "ALL")) { try { Int32.Parse(port); } catch { throw new ArgumentException("PcapPortTCP values must be an integer"); } } } }
             if (argPcapUDP != null && argPcapUDP.Length > 0) { foreach (string port in argPcapUDP) { if (!String.Equals(port, "ALL")) { try { Int32.Parse(port); } catch { throw new ArgumentException("PcapPortUDP values must be an integer"); } } } }
             if (!String.Equals(argProxy, "Y") && !String.Equals(argProxy, "N")) throw new ArgumentException("Proxy value must be Y or N");
             if (!String.Equals(argProxyAuth, "BASIC") && !String.Equals(argProxyAuth, "NTLM") && !String.Equals(argProxyAuth, "NTLMNOESS")) throw new ArgumentException("ProxyAuth value must be Basic, NTLM, or NTLMNoESS");
             try { IPAddress.Parse(argProxyIP); } catch { throw new ArgumentException("ProxyIP value must be an IP address"); }
-            try { Int32.Parse(argProxyPort); } catch { throw new ArgumentException("ProxyPort value must be a integer"); }          
+            try { Int32.Parse(argProxyPort); } catch { throw new ArgumentException("ProxyPort value must be a integer"); }
             try { runCount = Int32.Parse(argRunCount); } catch { throw new ArgumentException("RunCount value must be a integer"); }
             try { runTime = Int32.Parse(argRunTime); } catch { throw new ArgumentException("RunTime value must be a integer"); }
             if (!String.Equals(argSMB, "Y") && !String.Equals(argSMB, "N")) throw new ArgumentException("SMB value must be Y or N");
@@ -434,7 +440,7 @@ namespace Inveigh
             if (!String.Equals(argProxyAuth, "BASIC") && !String.Equals(argWPADAuth, "NTLM") && !String.Equals(argWPADAuth, "NTLMNOESS") && !String.Equals(argWPADAuth, "ANONYMOUS")) throw new ArgumentException("WPADAuth value must be Anonymous, Basic, NTLM, or NTLMNoESS");
             if (!String.IsNullOrEmpty(argWPADIP)) { try { IPAddress.Parse(argWPADIP); } catch { throw new ArgumentException("WPADIP value must be an IP address"); } }
             if (!String.IsNullOrEmpty(argWPADPort)) { try { Int32.Parse(argWPADPort); } catch { throw new ArgumentException("WPADPort value must be an integer"); } }
-                   
+
             if (String.Equals(argConsoleUnique, "Y")) { enabledConsoleUnique = true; }
             if (String.Equals(argElevated, "Y")) { enabledElevated = true; }
             if (String.Equals(argFileOutput, "Y")) { enabledFileOutput = true; }
@@ -460,7 +466,7 @@ namespace Inveigh
                 {
                     logList.Add(line);
                 }
-            
+
             }
 
             if (System.IO.File.Exists(Path.Combine(argFileOutputDirectory, String.Concat(argFilePrefix, "-Cleartext.txt"))))
@@ -587,10 +593,10 @@ namespace Inveigh
             }
             else if (!String.IsNullOrEmpty(argWPADIP) && !String.IsNullOrEmpty(argWPADPort))
             {
-                argWPADResponse = String.Concat("function FindProxyForURL(url,host) {", wpadDirectHosts, "return \"PROXY", argWPADIP,":",argWPADPort,"; DIRECT\";}");
+                argWPADResponse = String.Concat("function FindProxyForURL(url,host) {", wpadDirectHosts, "return \"PROXY", argWPADIP, ":", argWPADPort, "; DIRECT\";}");
             }
 
-            string version = "0.901";
+            string version = "0.902";
             string optionStatus = "";
             outputList.Add(String.Format("[*] Inveigh {0} started at {1}", version, DateTime.Now.ToString("s")));
             if (enabledElevated) optionStatus = "Enabled";
@@ -642,7 +648,7 @@ namespace Inveigh
                 if (!String.IsNullOrEmpty(argHTTPResponse)) outputList.Add("[+] HTTP Response = Enabled");
             }
 
-            if (String.Equals(argHTTPAuth,"BASIC") || String.Equals(argProxyAuth, "BASIC") || String.Equals(argWPADAuth, "BASIC")) { outputList.Add(String.Format("[+] Basic Authentication Realm = {0}", argHTTPBasicRealm)); }
+            if (String.Equals(argHTTPAuth, "BASIC") || String.Equals(argProxyAuth, "BASIC") || String.Equals(argWPADAuth, "BASIC")) { outputList.Add(String.Format("[+] Basic Authentication Realm = {0}", argHTTPBasicRealm)); }
 
             if (enabledProxy)
             {
@@ -682,7 +688,7 @@ namespace Inveigh
             outputList.Add(String.Format("[+] Previous Session Files = {0}", optionStatus));
             if (enabledFileOutput) { outputList.Add(String.Format("[+] Output Directory = {0}", argFileOutputDirectory)); }
             if (runCount == 1) outputList.Add(String.Format("[+] Run Count = {0} Minute", runCount));
-            else if(runCount > 1) outputList.Add(String.Format("[+] Run Count = {0} Minutes", runCount));
+            else if (runCount > 1) outputList.Add(String.Format("[+] Run Count = {0} Minutes", runCount));
             if (runTime == 1) outputList.Add(String.Format("[+] Run Time = {0} Minute", runTime));
             else if (runTime > 1) outputList.Add(String.Format("[+] Run Time = {0} Minutes", runTime));
             outputList.Add(String.Format("[*] Press ESC to access console"));
@@ -701,7 +707,7 @@ namespace Inveigh
                     nbnsListenerThread.Start();
                 }
 
-                if(enabledLLMNR)
+                if (enabledLLMNR)
                 {
                     Thread llmnrListenerThread = new Thread(() => LLMNR.LLMNRListener(argIP, argSpooferIP, argLLMNRTTL));
                     llmnrListenerThread.Start();
@@ -744,55 +750,105 @@ namespace Inveigh
 
             while (true)
             {
-                OutputLoop();
-                Console.WriteLine("");
-                consoleOutput = false;
-                int x = Console.CursorLeft;
-                int y = Console.CursorTop;
-                Console.CursorTop = Console.WindowTop + Console.WindowHeight - 2;
-                Console.WriteLine("Type ? for console command list");
-                Console.Write("Inveigh>");
-                string inputCommand = Console.ReadLine();
-                Console.CursorTop = Console.WindowTop + Console.WindowHeight - 2;
-                Console.Write(new string(' ', Console.WindowWidth));
-                Console.CursorTop = Console.WindowTop + Console.WindowHeight - 3;
-                Console.Write(new string(' ', Console.WindowWidth));
-                Console.SetCursorPosition(x, y);
-                inputCommand = inputCommand.ToUpper();
 
-                switch (inputCommand)
+                try
                 {
+                    OutputLoop();
+                    Console.WriteLine("");
+                    consoleOutput = false;
+                    int x = Console.CursorLeft;
+                    int y = Console.CursorTop;
+                    Console.CursorTop = Console.WindowTop + Console.WindowHeight - 2;
+                    Console.WriteLine("Type ? for console command list");
+                    Console.Write("Inveigh>");
+                    string inputCommand = Console.ReadLine();
+                    Console.CursorTop = Console.WindowTop + Console.WindowHeight - 2;
+                    Console.Write(new string(' ', Console.WindowWidth));
+                    Console.CursorTop = Console.WindowTop + Console.WindowHeight - 3;
+                    Console.Write(new string(' ', Console.WindowWidth));
+                    Console.SetCursorPosition(x, y);
+                    inputCommand = inputCommand.ToUpper();
 
-                    case "GET CONSOLE":
-                        Console.Clear();
-                        {
+                    switch (inputCommand)
+                    {
 
-                            while (consoleList.Count > 0)
+                        case "GET CONSOLE":
+                            Console.Clear();
                             {
 
-                                if (consoleList[0].StartsWith("[*]") || consoleList[0].Contains("captured") || consoleList[0].Contains("[redacted]") || (!consoleList[0].StartsWith("[+] ") && !consoleList[0].StartsWith("[*] ") && !consoleList[0].StartsWith("[!] ") && !consoleList[0].StartsWith("[-] ")))
+                                while (consoleList.Count > 0)
+                                {
+
+                                    if (consoleList[0].StartsWith("[*]") || consoleList[0].Contains("captured") || consoleList[0].Contains("[redacted]") || (!consoleList[0].StartsWith("[+] ") && !consoleList[0].StartsWith("[*] ") && !consoleList[0].StartsWith("[!] ") && !consoleList[0].StartsWith("[-] ")))
+                                    {
+                                        Console.ForegroundColor = ConsoleColor.Green;
+                                        Console.WriteLine(consoleList[0]);
+                                        Console.ResetColor();
+                                    }
+                                    else if (consoleList[0].StartsWith("[-]"))
+                                    {
+                                        Console.ForegroundColor = ConsoleColor.Red;
+                                        Console.WriteLine(consoleList[0]);
+                                        Console.ResetColor();
+                                    }
+                                    else if (consoleList[0].StartsWith("[!]") || consoleList[0].Contains("ignored"))
+                                    {
+                                        Console.ForegroundColor = ConsoleColor.Yellow;
+                                        Console.WriteLine(consoleList[0]);
+                                        Console.ResetColor();
+                                    }
+                                    else if (consoleList[0].Contains("[response sent]"))
+                                    {
+                                        int outputIndex = (consoleList[0].Substring(5)).IndexOf("[") + 6;
+                                        string outputStart = consoleList[0].Substring(0, outputIndex);
+                                        string outputEnd = consoleList[0].Substring(outputIndex).Replace("]", "");
+                                        Console.Write(outputStart);
+                                        Console.ForegroundColor = ConsoleColor.Green;
+                                        Console.Write(outputEnd);
+                                        Console.ResetColor();
+                                        Console.WriteLine("]");
+                                    }
+                                    else
+                                    {
+                                        Console.WriteLine(consoleList[0]);
+                                    }
+
+                                    consoleList.RemoveAt(0);
+                                }
+
+                            }
+                            break;
+
+                        case "GET LOG":
+                            Console.Clear();
+                            string[] outputLog = logList.ToArray();
+
+                            foreach (string entry in outputLog)
+                            {
+
+                                if (entry.StartsWith("[*]") || entry.Contains("captured") || entry.Contains("[redacted]") || (!entry.StartsWith("[+] ") && !entry.StartsWith("[*] ") && !entry.StartsWith("[!] ") && !entry.StartsWith("[-] ")))
                                 {
                                     Console.ForegroundColor = ConsoleColor.Green;
-                                    Console.WriteLine(consoleList[0]);
+                                    Console.WriteLine(entry);
                                     Console.ResetColor();
                                 }
-                                else if (consoleList[0].StartsWith("[-]"))
+                                else if (entry.StartsWith("[-]"))
                                 {
                                     Console.ForegroundColor = ConsoleColor.Red;
-                                    Console.WriteLine(consoleList[0]);
+                                    Console.WriteLine(entry);
                                     Console.ResetColor();
                                 }
-                                else if (consoleList[0].StartsWith("[!]") || consoleList[0].Contains("ignored"))
+                                else if (entry.StartsWith("[!]") || entry.Contains("ignored"))
                                 {
                                     Console.ForegroundColor = ConsoleColor.Yellow;
-                                    Console.WriteLine(consoleList[0]);
+                                    Console.WriteLine(entry);
                                     Console.ResetColor();
                                 }
-                                else if (consoleList[0].Contains("[response sent]"))
+                                else if (entry.Contains("[response sent]"))
                                 {
-                                    int outputIndex = (consoleList[0].Substring(5)).IndexOf("[") + 6;
-                                    string outputStart = consoleList[0].Substring(0, outputIndex);
-                                    string outputEnd = consoleList[0].Substring(outputIndex).Replace("]", "");
+                                    int outputIndex = (entry.Substring(5)).IndexOf("[") + 6;
+                                    string outputStart = entry.Substring(0, outputIndex);
+                                    string outputEnd = entry.Substring(outputIndex).Replace("]", "");
                                     Console.Write(outputStart);
                                     Console.ForegroundColor = ConsoleColor.Green;
                                     Console.Write(outputEnd);
@@ -801,266 +857,224 @@ namespace Inveigh
                                 }
                                 else
                                 {
-                                    Console.WriteLine(consoleList[0]);
+                                    Console.WriteLine(entry);
                                 }
 
-                                consoleList.RemoveAt(0);
                             }
+                            break;
 
-                        }
-                        break;
-
-                    case "GET LOG":
-                        Console.Clear();
-                        string[] outputLog = logList.ToArray();
-
-                        foreach (string entry in outputLog)
-                        {
-
-                            if (entry.StartsWith("[*]") || entry.Contains("captured") || entry.Contains("[redacted]") || (!entry.StartsWith("[+] ") && !entry.StartsWith("[*] ") && !entry.StartsWith("[!] ") && !entry.StartsWith("[-] ")))
-                            {
-                                Console.ForegroundColor = ConsoleColor.Green;
+                        case "GET CLEARTEXT":
+                            Console.Clear();
+                            string[] outputCleartext = cleartextList.ToArray();
+                            foreach (string entry in outputCleartext)
                                 Console.WriteLine(entry);
-                                Console.ResetColor();
-                            }
-                            else if (entry.StartsWith("[-]"))
-                            {
-                                Console.ForegroundColor = ConsoleColor.Red;
+                            break;
+
+                        case "GET CLEARTEXTUNIQUE":
+                            Console.Clear();
+                            Util.GetCleartextUnique();
+                            break;
+
+                        case "GET NTLMV1":
+                            Console.Clear();
+                            string[] outputNTLMV1 = ntlmv1List.ToArray();
+                            foreach (string entry in outputNTLMV1)
                                 Console.WriteLine(entry);
-                                Console.ResetColor();
-                            }
-                            else if (entry.StartsWith("[!]") || entry.Contains("ignored"))
-                            {
-                                Console.ForegroundColor = ConsoleColor.Yellow;
+                            break;
+
+                        case "GET NTLMV1UNIQUE":
+                            Console.Clear();
+                            Util.GetNTLMv1Unique();
+                            break;
+
+                        case "GET NTLMV1USERNAMES":
+                            Console.Clear();
+                            Util.GetNTLMv1Usernames();
+                            break;
+
+                        case "GET NTLMV2":
+                            Console.Clear();
+                            string[] outputNTLMV2 = ntlmv2List.ToArray();
+                            foreach (string entry in outputNTLMV2)
                                 Console.WriteLine(entry);
-                                Console.ResetColor();
-                            }
-                            else if (entry.Contains("[response sent]"))
+                            break;
+
+                        case "GET NTLMV2UNIQUE":
+                            Console.Clear();
+                            Util.GetNTLMv2Unique();
+                            break;
+
+                        case "GET NTLMV2USERNAMES":
+                            Console.Clear();
+                            Util.GetNTLMv2Usernames();
+                            break;
+
+                        case "?":
+                        case "HELP":
+                            Console.Clear();
+                            Console.WriteLine("");
+                            Console.WriteLine("==============================================================================================================");
+                            Console.WriteLine(" Inveigh Console Commands");
+                            Console.WriteLine("==============================================================================================================\n");
+                            Console.WriteLine("  GET CONSOLE                   | get queued console output");
+                            Console.WriteLine("  GET LOG                       | get log entries; add search string to filter results");
+                            Console.WriteLine("  GET NTLMV1                    | get captured NTLMv1 hashes; add search string to filter results");
+                            Console.WriteLine("  GET NTLMV2                    | get captured NTLMv2 hashes; add search string to filter results");
+                            Console.WriteLine("  GET NTLMV1UNIQUE              | get one captured NTLMv1 hash per user; add search string to filter results");
+                            Console.WriteLine("  GET NTLMV2UNIQUE              | get one captured NTLMv2 hash per user; add search string to filter results");
+                            Console.WriteLine("  GET NTLMV1USERNAMES           | get usernames and source IPs for captured NTLMv1 challenge/response hashes");
+                            Console.WriteLine("  GET NTLMV2USERNAMES           | get usernames and source IPs for captured NTLMv2 challenge/response hashes");
+                            Console.WriteLine("  GET CLEARTEXT                 | get captured cleartext credentials");
+                            Console.WriteLine("  GET CLEARTEXTUNIQUE           | get unique captured cleartext credentials");
+                            Console.WriteLine("  RESUME                        | resume real time console output");
+                            Console.WriteLine("  STOP                          | stop Inveigh\n");
+                            Console.WriteLine("==============================================================================================================");
+                            break;
+
+                        case "RESUME":
+                            consoleOutput = true;
+                            break;
+
+                        case "STOP":
+                            exitInveigh = true;
+                            StopInveigh();
+                            break;
+
+                        default:
+                            if (inputCommand.StartsWith("GET "))
                             {
-                                int outputIndex = (entry.Substring(5)).IndexOf("[") + 6;
-                                string outputStart = entry.Substring(0, outputIndex);
-                                string outputEnd = entry.Substring(outputIndex).Replace("]", "");
-                                Console.Write(outputStart);
-                                Console.ForegroundColor = ConsoleColor.Green;
-                                Console.Write(outputEnd);
-                                Console.ResetColor();
-                                Console.WriteLine("]");
-                            }
-                            else
-                            {
-                                Console.WriteLine(entry);
-                            }
+                                string[] inputArray = inputCommand.Split(' ');
 
-                        }
-                        break;
-
-                    case "GET CLEARTEXT":
-                        Console.Clear();
-                        string[] outputCleartext = cleartextList.ToArray();
-                        foreach (string entry in outputCleartext)
-                            Console.WriteLine(entry);
-                        break;
-
-                    case "GET CLEARTEXTUNIQUE":
-                        Console.Clear();
-                        Util.GetCleartextUnique();
-                        break;
-
-                    case "GET NTLMV1":
-                        Console.Clear();
-                        string[] outputNTLMV1 = ntlmv1List.ToArray();
-                        foreach (string entry in outputNTLMV1)
-                            Console.WriteLine(entry);
-                        break;
-
-                    case "GET NTLMV1UNIQUE":
-                        Console.Clear();
-                        Util.GetNTLMv1Unique();
-                        break;
-
-                    case "GET NTLMV1USERNAMES":
-                        Console.Clear();
-                        Util.GetNTLMv1Usernames();
-                        break;
-
-                    case "GET NTLMV2":
-                        Console.Clear();
-                        string[] outputNTLMV2 = ntlmv2List.ToArray();
-                        foreach (string entry in outputNTLMV2)
-                            Console.WriteLine(entry);
-                        break;
-
-                    case "GET NTLMV2UNIQUE":
-                        Console.Clear();
-                        Util.GetNTLMv2Unique();
-                        break;
-
-                    case "GET NTLMV2USERNAMES":
-                        Console.Clear();
-                        Util.GetNTLMv2Usernames();
-                        break;
-
-                    case "?":
-                    case "HELP":
-                        Console.Clear();
-                        Console.WriteLine("");
-                        Console.WriteLine("==============================================================================================================");
-                        Console.WriteLine(" Inveigh Console Commands");
-                        Console.WriteLine("==============================================================================================================\n");
-                        Console.WriteLine("  GET CONSOLE                   | get queued console output");
-                        Console.WriteLine("  GET LOG                       | get log entries; add search string to filter results");
-                        Console.WriteLine("  GET NTLMV1                    | get captured NTLMv1 hashes; add search string to filter results");
-                        Console.WriteLine("  GET NTLMV2                    | get captured NTLMv2 hashes; add search string to filter results");
-                        Console.WriteLine("  GET NTLMV1UNIQUE              | get one captured NTLMv1 hash per user; add search string to filter results");
-                        Console.WriteLine("  GET NTLMV2UNIQUE              | get one captured NTLMv2 hash per user; add search string to filter results");
-                        Console.WriteLine("  GET NTLMV1USERNAMES           | get usernames and source IPs for captured NTLMv1 challenge/response hashes");
-                        Console.WriteLine("  GET NTLMV2USERNAMES           | get usernames and source IPs for captured NTLMv2 challenge/response hashes");
-                        Console.WriteLine("  GET CLEARTEXT                 | get captured cleartext credentials");
-                        Console.WriteLine("  GET CLEARTEXTUNIQUE           | get unique captured cleartext credentials");
-                        Console.WriteLine("  RESUME                        | resume real time console output");
-                        Console.WriteLine("  STOP                          | stop Inveigh\n");
-                        Console.WriteLine("==============================================================================================================");
-                        break;
-
-                    case "RESUME":
-                        consoleOutput = true;
-                        break;
-
-                    case "STOP":    
-                        exitInveigh = true;
-                        StopInveigh();
-                        break;
-
-                    default:
-                        if (inputCommand.StartsWith("GET "))
-                        {
-                            string[] inputArray = inputCommand.Split(' ');
-
-                            if (inputArray != null && inputArray.Length == 3)
-                            {
-
-                                switch (inputArray[1])
+                                if (inputArray != null && inputArray.Length == 3)
                                 {
 
-                                    case "LOG":
-                                        Console.Clear();
-                                        var outputLogSearch = logList.Where(element => CultureInfo.CurrentCulture.CompareInfo.IndexOf(element, inputArray[2], CompareOptions.IgnoreCase) >= 0).ToList();
+                                    switch (inputArray[1])
+                                    {
 
-                                        if (outputLogSearch.Count > 0)
-                                        {
+                                        case "LOG":
+                                            Console.Clear();
+                                            var outputLogSearch = logList.Where(element => CultureInfo.CurrentCulture.CompareInfo.IndexOf(element, inputArray[2], CompareOptions.IgnoreCase) >= 0).ToList();
 
-                                            foreach (string entry in outputLogSearch)
+                                            if (outputLogSearch.Count > 0)
                                             {
-                                                Console.WriteLine(entry);
+
+                                                foreach (string entry in outputLogSearch)
+                                                {
+                                                    Console.WriteLine(entry);
+                                                }
+
+                                            }
+                                            else
+                                            {
+                                                Console.WriteLine("no results");
                                             }
 
-                                        }
-                                        else
-                                        {
-                                            Console.WriteLine("no results");
-                                        }
+                                            break;
 
-                                        break;
+                                        case "NTLMV1":
+                                            Console.Clear();
+                                            var outputNTLMV1Search = ntlmv2List.Where(element => CultureInfo.CurrentCulture.CompareInfo.IndexOf(element, inputArray[2], CompareOptions.IgnoreCase) >= 0).ToList();
 
-                                    case "NTLMV1":
-                                        Console.Clear();
-                                        var outputNTLMV1Search = ntlmv2List.Where(element => CultureInfo.CurrentCulture.CompareInfo.IndexOf(element, inputArray[2], CompareOptions.IgnoreCase) >= 0).ToList();
-
-                                        if (outputNTLMV1Search.Count > 0)
-                                        {
-
-                                            foreach (string entry in outputNTLMV1Search)
+                                            if (outputNTLMV1Search.Count > 0)
                                             {
-                                                Console.WriteLine(entry);
+
+                                                foreach (string entry in outputNTLMV1Search)
+                                                {
+                                                    Console.WriteLine(entry);
+                                                }
+
+                                            }
+                                            else
+                                            {
+                                                Console.WriteLine("no results");
                                             }
 
-                                        }
-                                        else
-                                        {
-                                            Console.WriteLine("no results");
-                                        }
+                                            break;
 
-                                        break;
+                                        case "NTLMV1UNIQUE":
+                                            Console.Clear();
+                                            var outputNTLMV1UniqueSearch = ntlmv2List.Where(element => CultureInfo.CurrentCulture.CompareInfo.IndexOf(element, inputArray[2], CompareOptions.IgnoreCase) >= 0).ToList();
 
-                                    case "NTLMV1UNIQUE":
-                                        Console.Clear();
-                                        var outputNTLMV1UniqueSearch = ntlmv2List.Where(element => CultureInfo.CurrentCulture.CompareInfo.IndexOf(element, inputArray[2], CompareOptions.IgnoreCase) >= 0).ToList();
-
-                                        if (outputNTLMV1UniqueSearch.Count > 0)
-                                        {
-                                            Console.WriteLine(outputNTLMV1UniqueSearch[0]);
-                                            Console.WriteLine("{0} matches", outputNTLMV1UniqueSearch.Count);
-                                        }
-                                        else
-                                        {
-                                            Console.WriteLine("no results");
-                                        }
-
-                                        break;
-
-                                    case "NTLMV2":
-                                        Console.Clear();
-                                        var outputNTLMV2Search = ntlmv2List.Where(element => CultureInfo.CurrentCulture.CompareInfo.IndexOf(element, inputArray[2], CompareOptions.IgnoreCase) >= 0).ToList();
-
-                                        if (outputNTLMV2Search.Count > 0)
-                                        {
-
-                                            foreach (string entry in outputNTLMV2Search)
+                                            if (outputNTLMV1UniqueSearch.Count > 0)
                                             {
-                                                Console.WriteLine(entry);
+                                                Console.WriteLine(outputNTLMV1UniqueSearch[0]);
+                                                Console.WriteLine("{0} matches", outputNTLMV1UniqueSearch.Count);
+                                            }
+                                            else
+                                            {
+                                                Console.WriteLine("no results");
                                             }
 
-                                        }
-                                        else
-                                        {
-                                            Console.WriteLine("no results");
-                                        }
+                                            break;
 
-                                        break;
+                                        case "NTLMV2":
+                                            Console.Clear();
+                                            var outputNTLMV2Search = ntlmv2List.Where(element => CultureInfo.CurrentCulture.CompareInfo.IndexOf(element, inputArray[2], CompareOptions.IgnoreCase) >= 0).ToList();
 
-                                    case "NTLMV2UNIQUE":
-                                        Console.Clear();
-                                        var outputNTLMV2UniqueSearch = ntlmv2List.Where(element => CultureInfo.CurrentCulture.CompareInfo.IndexOf(element, inputArray[2], CompareOptions.IgnoreCase) >= 0).ToList();
+                                            if (outputNTLMV2Search.Count > 0)
+                                            {
 
-                                        if (outputNTLMV2UniqueSearch.Count > 0)
-                                        {
-                                            Console.WriteLine(outputNTLMV2UniqueSearch[0]);
-                                            Console.WriteLine("{0} matches", outputNTLMV2UniqueSearch.Count);
-                                        }
-                                        else
-                                        {
-                                            Console.WriteLine("no results");
-                                        }
+                                                foreach (string entry in outputNTLMV2Search)
+                                                {
+                                                    Console.WriteLine(entry);
+                                                }
 
-                                        break;
+                                            }
+                                            else
+                                            {
+                                                Console.WriteLine("no results");
+                                            }
 
-                                    default:
-                                        Console.WriteLine("Invalid Command");
-                                        break;
+                                            break;
 
+                                        case "NTLMV2UNIQUE":
+                                            Console.Clear();
+                                            var outputNTLMV2UniqueSearch = ntlmv2List.Where(element => CultureInfo.CurrentCulture.CompareInfo.IndexOf(element, inputArray[2], CompareOptions.IgnoreCase) >= 0).ToList();
+
+                                            if (outputNTLMV2UniqueSearch.Count > 0)
+                                            {
+                                                Console.WriteLine(outputNTLMV2UniqueSearch[0]);
+                                                Console.WriteLine("{0} matches", outputNTLMV2UniqueSearch.Count);
+                                            }
+                                            else
+                                            {
+                                                Console.WriteLine("no results");
+                                            }
+
+                                            break;
+
+                                        default:
+                                            Console.WriteLine("Invalid Command");
+                                            break;
+
+                                    }
+
+                                }
+                                else
+                                {
+                                    Console.WriteLine("Invalid Command");
                                 }
 
                             }
                             else
-                            {
                                 Console.WriteLine("Invalid Command");
-                            }
+                            break;
+                    }
 
-                        }
-                        else
-                        Console.WriteLine("Invalid Command");
-                        break;
+                    System.Threading.Thread.Sleep(5);
                 }
-                
+                catch (Exception ex)
+                {
+                    Program.outputList.Add(String.Format("[-] [{0}] Console error detected - {1}", DateTime.Now.ToString("s"), ex.ToString()));
+                }
 
-                System.Threading.Thread.Sleep(5);
             }
 
         }
 
         static void FileOutput()
         {
-            
+
             while (true)
             {
 
@@ -1143,11 +1157,24 @@ namespace Inveigh
 
         static void OutputLoop()
         {
+            bool keyDetect = true;
+            bool keyPressed = false;
 
             do
             {
-                while (consoleOutput && !Console.KeyAvailable)
+                while (consoleOutput && !keyPressed)
                 {
+
+                    try
+                    {
+
+                        if (keyDetect && Console.KeyAvailable)
+                        {
+                            keyPressed = true;
+                        }
+
+                    }
+                    catch { keyDetect = false; }
 
                     while (consoleList.Count > 0)
                     {
@@ -1173,8 +1200,8 @@ namespace Inveigh
                         else if (consoleList[0].Contains("[response sent]"))
                         {
                             int outputIndex = (consoleList[0].Substring(5)).IndexOf("[") + 6;
-                            string outputStart = consoleList[0].Substring(0,outputIndex);
-                            string outputEnd = consoleList[0].Substring(outputIndex).Replace("]","");
+                            string outputStart = consoleList[0].Substring(0, outputIndex);
+                            string outputEnd = consoleList[0].Substring(outputIndex).Replace("]", "");
                             Console.Write(outputStart);
                             Console.ForegroundColor = ConsoleColor.Green;
                             Console.Write(outputEnd);
@@ -1192,7 +1219,7 @@ namespace Inveigh
                     System.Threading.Thread.Sleep(5);
                 }
             } while (consoleOutput && Console.ReadKey(true).Key != ConsoleKey.Escape);
-       
+
         }
 
         static void ControlLoop(int consoleStatus, int runCount, int runTime)
@@ -1565,4 +1592,3 @@ namespace Inveigh
     }
 
 }
-

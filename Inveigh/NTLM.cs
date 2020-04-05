@@ -13,7 +13,7 @@ namespace Inveigh
             int index = payload.IndexOf("4E544C4D53535000");
             string challenge = "";
 
-            if (index > 0 && String.Equals(payload.Substring((index + 16), 8),"02000000"))
+            if (index > 0 && String.Equals(payload.Substring((index + 16), 8), "02000000"))
             {
                 challenge = payload.Substring((index + 48), 16);
                 uint targetNameLength = Util.UInt16DataLength(((index + 24) / 2), field);
@@ -84,7 +84,7 @@ namespace Inveigh
             string user = "";
             string host = "";
 
-            if ((String.Equals(protocol,"HTTP") || String.Equals(protocol,"Proxy") || index > 0) && payload.Substring((index + 16), 8) == "03000000")
+            if ((String.Equals(protocol, "HTTP") || String.Equals(protocol, "Proxy") || index > 0) && payload.Substring((index + 16), 8) == "03000000")
             {
                 int ntlmsspOffset = index / 2;
                 int lmLength = (int)Util.UInt16DataLength((ntlmsspOffset + 12), field);
@@ -135,10 +135,14 @@ namespace Inveigh
                             if (Program.enabledMachineAccounts || (!Program.enabledMachineAccounts && !user.EndsWith("$")))
                             {
 
+                                if (String.IsNullOrEmpty(challenge))
+                                {
+                                    Program.outputList.Add(String.Format("[-] [{0}] {1}({2}) NTLMv2 challenge missing for {3}\\{4} from {5}({6}):{7}:", DateTime.Now.ToString("s"), protocol, protocolPort, domain, user, sourceIP, host, sourcePort));
+                                }
 
                                 if (Program.enabledConsoleUnique && Program.ntlmv2UsernameList.Contains(String.Concat(sourceIP, " ", domain, "\\", user)))
                                 {
-                                    Program.outputList.Add(String.Format("[+] [{0}] {1}({2}) NTLMv2 captured for {3}\\{4} from {5}({6}):{7}:{8}{9}", DateTime.Now.ToString("s"), protocol, protocolPort, domain, user, sourceIP, host, sourcePort, System.Environment.NewLine,  "[not unique]"));
+                                    Program.outputList.Add(String.Format("[+] [{0}] {1}({2}) NTLMv2 captured for {3}\\{4} from {5}({6}):{7}:{8}{9}", DateTime.Now.ToString("s"), protocol, protocolPort, domain, user, sourceIP, host, sourcePort, System.Environment.NewLine, "[not unique]"));
                                 }
                                 else
                                 {
@@ -201,6 +205,11 @@ namespace Inveigh
                             if (Program.enabledMachineAccounts || (!Program.enabledMachineAccounts && !user.EndsWith("$")))
                             {
 
+                                if (String.IsNullOrEmpty(challenge))
+                                {
+                                    Program.outputList.Add(String.Format("[-] [{0}] {1}({2}) NTLMv1 challenge missing for {3}\\{4} from {5}({6}):{7}:", DateTime.Now.ToString("s"), protocol, protocolPort, domain, user, sourceIP, host, sourcePort));
+                                }
+
                                 if (Program.ntlmv1UsernameList.Contains(String.Concat(sourceIP, " ", domain, "\\", user)))
                                 {
                                     Program.outputList.Add(String.Format("[+] [{0}] {1}({2}) NTLMv1 captured for {3}\\{4} from {5}({6}):{7}:{8}{9}", DateTime.Now.ToString("s"), protocol, protocolPort, domain, user, sourceIP, host, sourcePort, System.Environment.NewLine, "[not unique]"));
@@ -253,7 +262,7 @@ namespace Inveigh
                     }
 
                 }
-                else if(ntlmLength == 0)
+                else if (ntlmLength == 0)
                 {
 
                     lock (Program.outputList)
