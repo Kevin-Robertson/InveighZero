@@ -1,6 +1,6 @@
 ![InveighZero_logo](https://user-images.githubusercontent.com/5897462/62184518-7ab31380-b32c-11e9-9470-b3f482bd4577.png)
 
-InveighZero is a C# LLMNR/NBNS/mDNS/DNS spoofer and man-in-the-middle tool designed to assist penetration testers/red teamers that find themselves limited to a Windows system. This version shares many features with the PowerShell version of [Inveigh](https://github.com/Kevin-Robertson/Inveigh).         
+InveighZero is a C# LLMNR/NBNS/mDNS/DNS/DHCPv6 spoofer and man-in-the-middle tool designed to assist penetration testers/red teamers that find themselves limited to a Windows system. This version shares many features with the PowerShell version of [Inveigh](https://github.com/Kevin-Robertson/Inveigh).         
 
 ## Privileged Mode Features (elevated admin required)  
 * SMB capture - packet sniffer based  
@@ -8,6 +8,7 @@ InveighZero is a C# LLMNR/NBNS/mDNS/DNS spoofer and man-in-the-middle tool desig
 * NBNS spoofer - packet sniffer based  
 * mDNS spoofer - packet sniffer based  
 * DNS spoofer - packet sniffer based  
+* DHCPv6 spoofer - packet sniffer based  
 * Pcap output - TCP and UDP packets  
 * Packet sniffer console output - SYN packets, SMB kerberos negotiation, etc  
 
@@ -16,6 +17,7 @@ InveighZero is a C# LLMNR/NBNS/mDNS/DNS spoofer and man-in-the-middle tool desig
 * NBNS spoofer - UDP listener based  
 * mDNS spoofer - UDP listener based  
 * DNS spoofer - UDP listener based  
+* DHCPv6 spoofer - UDP listener based  
 * Note: The NBNS spoofer should work on all systems even with NBNS enabled. The LLMNR and mDNS spoofers seem to work on Windows 10 and Server 2016 with those services already enabled. Firewalls can still get in the way of everything.    
 
 ## Other Features  

