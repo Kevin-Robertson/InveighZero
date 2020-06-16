@@ -728,7 +728,7 @@ namespace Inveigh
                 argWPADResponse = String.Concat("function FindProxyForURL(url,host) {", wpadDirectHosts, "return \"PROXY", argWPADIP, ":", argWPADPort, "; DIRECT\";}");
             }
 
-            string version = "0.910";
+            string version = "0.911";
             string optionStatus = "";
             outputList.Add(String.Format("[*] Inveigh {0} started at {1}", version, DateTime.Now.ToString("s")));
             if (enabledElevated) optionStatus = "Enabled";
@@ -1406,52 +1406,62 @@ namespace Inveigh
                     StopInveigh();
                 }
 
-                while (outputList.Count > 0)
+                try
                 {
-                    consoleList.Add(outputList[0]);
 
-                    if (enabledLogOutput)
+                    while (outputList.Count > 0)
                     {
-                        logList.Add(outputList[0]);
+
+                        consoleList.Add(outputList[0]);
+
+                        if (enabledLogOutput)
+                        {
+                            logList.Add(outputList[0]);
+                        }
+
+                        if (outputList[0].StartsWith("[+] ") || outputList[0].StartsWith("[*] ") || outputList[0].StartsWith("[!] ") || outputList[0].StartsWith("[-] "))
+                        {
+                            logFileList.Add(outputList[0]);
+                        }
+                        else
+                        {
+                            logFileList.Add("[redacted]");
+                        }
+
+                        lock (outputList)
+                        {
+                            outputList.RemoveAt(0);
+                        }
+
                     }
 
-                    if (outputList[0].StartsWith("[+] ") || outputList[0].StartsWith("[*] ") || outputList[0].StartsWith("[!] ") || outputList[0].StartsWith("[-] "))
+                    if (!consoleOutput && consoleQueueLimit >= 0)
                     {
-                        logFileList.Add(outputList[0]);
-                    }
-                    else
-                    {
-                        logFileList.Add("[redacted]");
+
+                        while (consoleList.Count > consoleQueueLimit && !consoleOutput)
+                        {
+                            consoleList.RemoveAt(0);
+                        }
+
                     }
 
-                    lock (outputList)
+                    if (exitInveigh && consoleOutput)
                     {
-                        outputList.RemoveAt(0);
+                        while (consoleList.Count > 0)
+                        {
+                            System.Threading.Thread.Sleep(5);
+                        }
+
+                        Environment.Exit(0);
                     }
 
                 }
-
-                if (!consoleOutput && consoleQueueLimit >= 0)
+                catch (Exception ex)
                 {
-
-                    while (consoleList.Count > consoleQueueLimit && !consoleOutput)
-                    {
-                        consoleList.RemoveAt(0);
-                    }
-
+                    Program.outputList.Add(String.Format("[-] [{0}] Output error detected - {1}", DateTime.Now.ToString("s"), ex.ToString()));
                 }
 
-                if (exitInveigh && consoleOutput)
-                {
-                    while (consoleList.Count > 0)
-                    {
-                        System.Threading.Thread.Sleep(5);
-                    }
-
-                    Environment.Exit(0);
-                }
-
-                System.Threading.Thread.Sleep(5);
+                Thread.Sleep(5);
             }
 
         }

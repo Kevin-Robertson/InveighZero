@@ -214,7 +214,7 @@ namespace Inveigh
             }
             else if (recordTypes != null && recordTypes.Length > 0 && (!Array.Exists(recordTypes, element => element == requestType.ToUpper())))
             {
-                responseMessage = String.Concat(requestType, " replys disabled");
+                responseMessage = String.Concat(requestType, " replies disabled");
             }
             else if (Program.argSpooferHostsIgnore != null && Program.argSpooferHostsIgnore.Length > 0 && (Array.Exists(Program.argSpooferHostsIgnore, element => element == nameRequest.ToUpper()) ||
                 (!String.IsNullOrEmpty(nameRequestHost) && Array.Exists(Program.argSpooferHostsIgnore, element => element == nameRequestHost.ToUpper()))))
