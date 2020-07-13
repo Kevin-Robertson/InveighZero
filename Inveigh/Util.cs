@@ -150,6 +150,70 @@ namespace Inveigh
             if (!Program.enabledSpooferRepeat)
             {
 
+                if (String.Equals(type, "DNS"))
+                {
+
+                    if (Program.dhcpv6ClientTable.ContainsValue(sourceIP.Split('%')[0]))
+                    {
+                        string hostFQDN = Program.dhcpv6ClientTable.Keys.OfType<String>().FirstOrDefault(s => Program.dhcpv6ClientTable[s].ToString() == sourceIP.Split('%')[0]);
+                        string host = hostFQDN.Split('.')[0].ToUpper();
+                        string mappedIP = "";
+
+                        //dupe
+                        foreach (string capture in Program.ntlmv2UsernameList)
+                        {
+
+                            if (!String.IsNullOrEmpty(capture.Split(',')[1]) && capture.Split(',')[1].StartsWith(host))
+                            {
+                                mappedIP = capture.Split(',')[0];
+                            }
+
+                        }
+
+                        if (String.IsNullOrEmpty(mappedIP))
+                        {
+
+                            foreach (string capture in Program.ntlmv1UsernameList)
+                            {
+
+                                if (!String.IsNullOrEmpty(capture.Split(',')[1]) && capture.Split(',')[1].StartsWith(host))
+                                {
+                                    mappedIP = capture.Split(',')[0];
+                                }
+
+                            }
+
+                        }
+
+                        if (!String.IsNullOrEmpty(mappedIP))
+                        {
+
+                            foreach (string capture in Program.ntlmv2UsernameList)
+                            {
+
+                                if (capture.StartsWith(mappedIP) && !capture.EndsWith("$"))
+                                {
+                                    isRepeat = true;
+                                }
+
+                            }
+
+                            foreach (string capture in Program.ntlmv1UsernameList)
+                            {
+
+                                if (capture.StartsWith(mappedIP) && !capture.EndsWith("$"))
+                                {
+                                    isRepeat = true;
+                                }
+
+                            }
+
+                        }
+
+                    }              
+
+                }
+
                 foreach (string capture in Program.ntlmv2UsernameList)
                 {
 
@@ -499,14 +563,14 @@ namespace Inveigh
 
             if (Program.ntlmv1UsernameList.Count > 0)
             {
-                Console.WriteLine(String.Format("[+] [{0}] Current NTLMv1 IP addresses and usernames:", DateTime.Now.ToString("s")));
+                Console.WriteLine(String.Format("[+] [{0}] Current NTLMv1 IP addresses, hostnamess, and usernames:", DateTime.Now.ToString("s")));
                 string[] outputNTLMV1Usernames = Program.ntlmv1UsernameList.ToArray();
                 foreach (string entry in outputNTLMV1Usernames)
                     Console.WriteLine(entry);
             }
             else
             {
-                Console.WriteLine(String.Format("[+] [{0}] NTLMv1 IP address and username list is empty", DateTime.Now.ToString("s")));
+                Console.WriteLine(String.Format("[+] [{0}] NTLMv1 IP address, hostname, and username list is empty", DateTime.Now.ToString("s")));
             }
 
         }
@@ -516,14 +580,14 @@ namespace Inveigh
 
             if (Program.ntlmv2UsernameList.Count > 0)
             {
-                Console.WriteLine(String.Format("[+] [{0}] Current NTLMv2 IP addresses and usernames:", DateTime.Now.ToString("s")));
+                Console.WriteLine(String.Format("[+] [{0}] Current NTLMv2 IP addresses, hostnames, and usernames:", DateTime.Now.ToString("s")));
                 string[] outputNTLMV2Usernames = Program.ntlmv2UsernameList.ToArray();
                 foreach (string entry in outputNTLMV2Usernames)
                     Console.WriteLine(entry);
             }
             else
             {
-                Console.WriteLine(String.Format("[+] [{0}] NTLMv2 IP address and username list is empty", DateTime.Now.ToString("s")));
+                Console.WriteLine(String.Format("[+] [{0}] NTLMv2 IP address, hostname, and username list is empty", DateTime.Now.ToString("s")));
             }
 
         }

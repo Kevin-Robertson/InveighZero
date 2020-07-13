@@ -15,7 +15,7 @@ namespace Inveigh
         public static void SnifferSpoofer(string ipVersion, string snifferIP, string snifferMAC, string spooferIP, string spooferIPv6, string dnsDomainController, string dnsTTL, string llmnrTTL, string mdnsTTL, string nbnsTTL, string[] dnsTypes, string[] mdnsQuestions, string[] mdnsTypes, string[] nbnsTypes, string dhcpv6DomainSuffix, string[] pcapTCP, string[] pcapUDP)
         {
             byte[] spooferIPData = IPAddress.Parse(spooferIP).GetAddressBytes();
-            byte[] spooferIPv6Data = IPAddress.Parse(spooferIPv6).GetAddressBytes();
+            byte[] spooferIPv6Data = new byte[16];
             byte[] byteIn = new byte[4] { 1, 0, 0, 0 };
             byte[] byteOut = new byte[4] { 1, 0, 0, 0 };
             byte[] byteData = new byte[65534];
@@ -33,13 +33,11 @@ namespace Inveigh
 
             if (String.Equals(ipVersion, "IPv6"))
             {
+                spooferIPv6Data = IPAddress.Parse(spooferIPv6).GetAddressBytes();
                 snifferEndPointRemote = new IPEndPoint(IPAddress.IPv6Any, 0);
                 ipVersionAddressFamily = AddressFamily.InterNetworkV6;
 
-
-                snifferMAC = snifferMAC.Insert(2, "-").Insert(5, "-").Insert(8, "-").Insert(11, "-").Insert(14, "-");
-
-                foreach (string character in snifferMAC.Split('-'))
+                foreach (string character in snifferMAC.Split(':'))
                 {
                     snifferMACArray[i] = Convert.ToByte(Convert.ToInt16(character, 16));
                     i++;
@@ -432,7 +430,7 @@ namespace Inveigh
 
                                             byte[] dhcpv6ClientIP = new byte[16];
                                             string dhcpv6LeaseIP = "";
-                                            string dhcpv6FQDN = "";
+                                            string dhcpv6FQDN = dhcpv6ClientMAC;
 
                                             if ((int)dhcpv6MessageTypeID[0] == 1 || (int)dhcpv6MessageTypeID[0] == 3 || (int)dhcpv6MessageTypeID[0] == 5)
                                             {
@@ -449,26 +447,35 @@ namespace Inveigh
 
                                                 int index = BitConverter.ToString(udpPayload).Replace("-", String.Empty).IndexOf("4D53465420352E30");
 
-                                                if (index >= 0 && Program.dhcpv6ClientTable.ContainsKey(dhcpv6ClientMAC))
+                                                if ((int)dhcpv6MessageTypeID[0] == 5)
                                                 {
-                                                    dhcpv6LeaseIP = Program.dhcpv6ClientTable[dhcpv6ClientMAC].ToString();
+                                                    dhcpv6LeaseIP = sourceIPAddress.ToString();
                                                     dhcpv6ClientIP = IPAddress.Parse(dhcpv6LeaseIP).GetAddressBytes();
                                                 }
-                                                else if (index >= 0 && !Program.dhcpv6ClientTable.ContainsKey(dhcpv6ClientMAC))
+                                                else if (index >= 0 && Program.dhcpv6ClientTable.ContainsKey(dhcpv6FQDN))
+                                                {
+                                                    dhcpv6LeaseIP = Program.dhcpv6ClientTable[dhcpv6FQDN].ToString();
+                                                    dhcpv6ClientIP = IPAddress.Parse(dhcpv6LeaseIP).GetAddressBytes();
+                                                }
+                                                else if (index >= 0 && !Program.dhcpv6ClientTable.ContainsKey(dhcpv6FQDN))
                                                 {
                                                     dhcpv6LeaseIP = "fe80::" + ipv6RandomValue + ":" + dhcpv6IPIndex;
                                                     dhcpv6ClientIP = IPAddress.Parse(dhcpv6LeaseIP).GetAddressBytes();
-                                                    Program.dhcpv6ClientTable.Add(dhcpv6ClientMAC, dhcpv6LeaseIP);
+                                                }
+
+                                                if (index >= 0 && !Program.dhcpv6ClientTable.ContainsKey(dhcpv6FQDN))
+                                                {
+                                                    Program.dhcpv6ClientTable.Add(dhcpv6FQDN, dhcpv6LeaseIP);
                                                     dhcpv6IPIndex++;
 
                                                     lock (Program.dhcpv6FileList)
                                                     {
-                                                        Program.dhcpv6FileList.Add(dhcpv6ClientMAC + "," + dhcpv6LeaseIP);
+                                                        Program.dhcpv6FileList.Add(dhcpv6FQDN + "," + dhcpv6LeaseIP);
                                                     }
 
                                                 }
 
-                                                string dhcpv6ResponseMessage = DHCPv6.DHCPv6Output(dhcpv6ClientMAC, dhcpv6FQDN, dhcpv6LeaseIP, sourceIPAddress.ToString(), index, (int)dhcpv6MessageTypeID[0]);
+                                                string dhcpv6ResponseMessage = DHCPv6.DHCPv6Output(dhcpv6ClientMAC, dhcpv6FQDN, dhcpv6LeaseIP, sourceIPAddress.ToString(), snifferMAC, index, (int)dhcpv6MessageTypeID[0]);
 
                                                 if (String.Equals(dhcpv6ResponseMessage, "response sent"))
                                                 {

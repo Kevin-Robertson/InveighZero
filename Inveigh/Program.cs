@@ -42,6 +42,7 @@ namespace Inveigh
         public static bool enabledFileUnique = false;
         public static bool enabledHTTP = false;
         public static bool enabledDHCPv6 = false;
+        public static bool enabledDHCPv6Local = false;
         public static bool enabledDNS = false;
         public static bool enabledInspect = false;
         public static bool enabledNBNS = false;
@@ -73,6 +74,7 @@ namespace Inveigh
             string argConsoleStatus = "0";
             string argConsoleUnique = "Y";
             string argDHCPv6 = "N";
+            string argDHCPv6Local = "N";
             string argDHCPv6DNSSuffix = "";
             string argDHCPv6RA = "30";
             string argDNS = "Y";
@@ -184,14 +186,19 @@ namespace Inveigh
                             argDHCPv6 = args[entry.index + 1].ToUpper();
                             break;
 
-                        case "-DHCPV6RA":
-                        case "/DHCPV6RA":
-                            argDHCPv6RA = args[entry.index + 1];
+                        case "-DHCPV6LOCAL":
+                        case "/DHCPV6LOCAL":
+                            argDHCPv6Local = args[entry.index + 1].ToUpper();
                             break;
 
                         case "-DHCPV6DNSSUFFIX":
                         case "/DHCPV6DNSSUFFIX":
                             argDHCPv6DNSSuffix = args[entry.index + 1];
+                            break;
+
+                        case "-DHCPV6RA":
+                        case "/DHCPV6RA":
+                            argDHCPv6RA = args[entry.index + 1];
                             break;
 
                         case "-DNS":
@@ -511,6 +518,7 @@ namespace Inveigh
             if (argDNSTypes != null && argDNSTypes.Length > 0) { foreach (string type in argDNSTypes) { if (!String.Equals(type, "A") && !String.Equals(type, "SOA") && !String.Equals(type, "SRV")) { throw new ArgumentException("DNSTypes valid values are A, SOA, and SRV"); } } }
             if ((argDNSTypes.Contains("SOA") || argDNSTypes.Contains("SRV")) && argDNSHost.Split('.').Count() < 3) throw new ArgumentException("DNSHost must be specified and fully qualified when using DNSTypes SOA or SRV");
             if (!String.Equals(argDHCPv6, "Y") && !String.Equals(argDHCPv6, "N")) throw new ArgumentException("DHCPv6 value must be Y or N");
+            if (!String.Equals(argDHCPv6Local, "Y") && !String.Equals(argDHCPv6Local, "N")) throw new ArgumentException("DHCPv6Local value must be Y or N");
             try { dhcpv6RA = Int32.Parse(argDHCPv6RA); } catch { throw new ArgumentException("DHCPv6RA value must be a integer"); }
             if (!String.Equals(argFileOutput, "Y") && !String.Equals(argFileOutput, "N")) throw new ArgumentException("FileOutput value must be Y or N");
             if (String.Equals(argFileOutput, "Y") && !System.IO.Directory.Exists(argFileOutputDirectory)) { throw new ArgumentException("FileOutputDirectory is invalid"); }
@@ -552,6 +560,7 @@ namespace Inveigh
             if (String.Equals(argFileOutput, "Y")) { enabledFileOutput = true; }
             if (String.Equals(argFileUnique, "Y")) { enabledFileUnique = true; }
             if (String.Equals(argDHCPv6, "Y")) { enabledDHCPv6 = true; }
+            if (String.Equals(argDHCPv6Local, "Y")) { enabledDHCPv6Local = true; }
             if (String.Equals(argDNS, "Y")) { enabledDNS = true; }
             if (String.Equals(argHTTP, "Y")) { enabledHTTP = true; }
             if (argInspect) { enabledInspect = true; }
@@ -661,9 +670,18 @@ namespace Inveigh
                 argIPv6 = Util.GetLocalIPAddress("IPv6");
             }
 
-            if (string.IsNullOrEmpty(argMAC))
+            if (string.IsNullOrEmpty(argMAC) && !string.IsNullOrEmpty(argIPv6))
             {
                 argMAC = Util.GetLocalMACAddress(IPAddress.Parse(argIPv6).ToString());
+            }
+
+            if (!string.IsNullOrEmpty(argMAC) && !string.IsNullOrEmpty(argIPv6))
+            {
+                argMAC = argMAC.Insert(2, ":").Insert(5, ":").Insert(8, ":").Insert(11, ":").Insert(14, ":");
+            }
+            else
+            {
+                enabledDHCPv6 = false;
             }
 
             if (string.IsNullOrEmpty(argSpooferIP))
@@ -695,7 +713,6 @@ namespace Inveigh
                     enabledHTTP = false;
                     enabledProxy = false;
                     enabledSMB = false;
-                    enabledDHCPv6 = false;
                 }
                 else
                 {
@@ -728,7 +745,7 @@ namespace Inveigh
                 argWPADResponse = String.Concat("function FindProxyForURL(url,host) {", wpadDirectHosts, "return \"PROXY", argWPADIP, ":", argWPADPort, "; DIRECT\";}");
             }
 
-            string version = "0.911";
+            string version = "0.912";
             string optionStatus = "";
             outputList.Add(String.Format("[*] Inveigh {0} started at {1}", version, DateTime.Now.ToString("s")));
             if (enabledElevated) optionStatus = "Enabled";
@@ -736,10 +753,10 @@ namespace Inveigh
             outputList.Add(String.Format("[+] Elevated Privilege Mode = {0}", optionStatus));
             if (argInspect) { outputList.Add("[+] Inspect Only Mode = Enabled"); }
             outputList.Add(String.Format("[+] Primary IP Address = {0}", argIP));
-            outputList.Add(String.Format("[+] Primary IPv6 Address = {0}", argIPv6));
+            if (!String.IsNullOrEmpty(argDHCPv6DNSSuffix)) outputList.Add(String.Format("[+] Primary IPv6 Address = {0}", argIPv6));
             outputList.Add(String.Format("[+] Spoofer IP Address = {0}", argSpooferIP));
-            outputList.Add(String.Format("[+] Spoofer IPv6 Address = {0}", argSpooferIPv6));
-            outputList.Add(String.Format("[+] Spoofer MAC Address = {0}", argMAC));
+            if (!String.IsNullOrEmpty(argDHCPv6DNSSuffix)) outputList.Add(String.Format("[+] Spoofer IPv6 Address = {0}", argSpooferIPv6));
+            if (!String.IsNullOrEmpty(argDHCPv6DNSSuffix)) outputList.Add(String.Format("[+] Spoofer MAC Address = {0}", argMAC));
             if (argSpooferDomainsIgnore != null) outputList.Add(String.Format("[+] Spoofer Domain Ignore = {0}", String.Join(",", argSpooferDomainsIgnore)));
             if (argSpooferDomainsReply != null) outputList.Add(String.Format("[+] Spoofer Domains Reply = {0}", String.Join(",", argSpooferDomainsReply)));
             if (argSpooferHostsIgnore != null) outputList.Add(String.Format("[+] Spoofer Hosts Ignore = {0}", String.Join(",", argSpooferHostsIgnore)));
@@ -757,6 +774,9 @@ namespace Inveigh
 
             if (enabledDHCPv6)
             {
+                if (enabledDHCPv6Local) optionStatus = "Enabled";
+                else optionStatus = "Disabled";
+                outputList.Add(String.Format("[+] DHCPv6 Local Attacks = {0}", optionStatus));
                 if (!String.IsNullOrEmpty(argDHCPv6DNSSuffix)) outputList.Add(String.Format("[+] DHCPv6 DNS Suffix = {0}", argDHCPv6DNSSuffix));
                 if (dhcpv6RA > 0) outputList.Add(String.Format("[+] DHCPv6 ICMPv6 Router Advertise Interval = {0} Seconds", argDHCPv6RA));             
             }
@@ -1051,8 +1071,8 @@ namespace Inveigh
                             Console.WriteLine("  GET NTLMV2                    | get captured NTLMv2 hashes; add search string to filter results");
                             Console.WriteLine("  GET NTLMV1UNIQUE              | get one captured NTLMv1 hash per user; add search string to filter results");
                             Console.WriteLine("  GET NTLMV2UNIQUE              | get one captured NTLMv2 hash per user; add search string to filter results");
-                            Console.WriteLine("  GET NTLMV1USERNAMES           | get usernames and source IPs for captured NTLMv1 challenge/response hashes");
-                            Console.WriteLine("  GET NTLMV2USERNAMES           | get usernames and source IPs for captured NTLMv2 challenge/response hashes");
+                            Console.WriteLine("  GET NTLMV1USERNAMES           | get usernames and source IPs/hostnames for captured NTLMv1 challenge/response hashes");
+                            Console.WriteLine("  GET NTLMV2USERNAMES           | get usernames and source IPs/hostnames for captured NTLMv2 challenge/response hashes");
                             Console.WriteLine("  GET CLEARTEXT                 | get captured cleartext credentials");
                             Console.WriteLine("  GET CLEARTEXTUNIQUE           | get unique captured cleartext credentials");
                             Console.WriteLine("  RESUME                        | resume real time console output");
@@ -1194,7 +1214,8 @@ namespace Inveigh
                 }
                 catch (Exception ex)
                 {
-                    Program.outputList.Add(String.Format("[-] [{0}] Console error detected - {1}", DateTime.Now.ToString("s"), ex.ToString()));
+                    Console.WriteLine(outputList.Count);
+                    Program.outputList.Add(String.Format("[-] [{0}] Console error detected - {1}", DateTime.Now.ToString("s"), ex.ToString()));                 
                 }
 
             }
@@ -1332,6 +1353,11 @@ namespace Inveigh
 
         static void ConsoleOutputFormat(string consoleEntry)
         {
+
+            if(String.IsNullOrEmpty(consoleEntry))
+            {
+                consoleEntry = "";
+            }
 
             if (consoleEntry.StartsWith("[*]") || consoleEntry.Contains("captured") || consoleEntry.Contains("renewed to") || consoleEntry.Contains("leased to") || consoleEntry.Contains("advertised to") || 
                 consoleEntry.Contains("[not unique]") || consoleEntry.Contains("[redacted]") || (!consoleEntry.StartsWith("[+] ") && !consoleEntry.StartsWith("[*] ") && !consoleEntry.StartsWith("[!] ") && 
@@ -1510,6 +1536,11 @@ namespace Inveigh
             if (nullarg || String.Equals(arg, "DHCPV6"))
             {
                 Console.WriteLine(" -DHCPv6                  Default = Disabled: (Y/N) Enable/Disable DHCPv6 spoofing.");
+            }
+
+            if (nullarg || String.Equals(arg, "DHCPV6Local"))
+            {
+                Console.WriteLine(" -DHCPv6Local             Default = Disabled: (Y/N) Enable/Disable spoofing DHCPv6 packets from the Inveigh host.");
             }
 
             if (nullarg || String.Equals(arg, "DHCPV6DNSSUFFIX"))
