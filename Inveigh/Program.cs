@@ -18,13 +18,14 @@ namespace Inveigh
     {
         public static Hashtable smbSessionTable = Hashtable.Synchronized(new Hashtable());
         public static Hashtable httpSessionTable = Hashtable.Synchronized(new Hashtable());
-        public static Hashtable dhcpv6ClientTable = Hashtable.Synchronized(new Hashtable());
         public static IList<string> outputList = new List<string>();
         static IList<string> consoleList = new List<string>();
         static IList<string> logList = new List<string>();
         static IList<string> logFileList = new List<string>();
         public static IList<string> cleartextList = new List<string>();
         public static IList<string> cleartextFileList = new List<string>();
+        public static IList<string> hostList = new List<string>();
+        public static IList<string> hostFileList = new List<string>();
         public static IList<string> ntlmv1List = new List<string>();
         public static IList<string> ntlmv2List = new List<string>();
         public static IList<string> ntlmv1FileList = new List<string>();
@@ -33,7 +34,6 @@ namespace Inveigh
         public static IList<string> ntlmv2UsernameList = new List<string>();
         public static IList<string> ntlmv1UsernameFileList = new List<string>();
         public static IList<string> ntlmv2UsernameFileList = new List<string>();
-        public static IList<string> dhcpv6FileList = new List<string>();
         public static bool consoleOutput = true;
         public static bool exitInveigh = false;
         public static bool enabledConsoleUnique = false;
@@ -654,8 +654,7 @@ namespace Inveigh
 
                 foreach (string line in file)
                 {
-                    string[] keyValue = line.Split(',');
-                    dhcpv6ClientTable.Add(keyValue[0],keyValue[1]);
+                    hostList.Add(line);
                 }
 
             }
@@ -745,7 +744,7 @@ namespace Inveigh
                 argWPADResponse = String.Concat("function FindProxyForURL(url,host) {", wpadDirectHosts, "return \"PROXY", argWPADIP, ":", argWPADPort, "; DIRECT\";}");
             }
 
-            string version = "0.912";
+            string version = "0.913";
             string optionStatus = "";
             outputList.Add(String.Format("[*] Inveigh {0} started at {1}", version, DateTime.Now.ToString("s")));
             if (enabledElevated) optionStatus = "Enabled";
@@ -753,10 +752,10 @@ namespace Inveigh
             outputList.Add(String.Format("[+] Elevated Privilege Mode = {0}", optionStatus));
             if (argInspect) { outputList.Add("[+] Inspect Only Mode = Enabled"); }
             outputList.Add(String.Format("[+] Primary IP Address = {0}", argIP));
-            if (!String.IsNullOrEmpty(argDHCPv6DNSSuffix)) outputList.Add(String.Format("[+] Primary IPv6 Address = {0}", argIPv6));
+            if (!String.IsNullOrEmpty(argIPv6)) outputList.Add(String.Format("[+] Primary IPv6 Address = {0}", argIPv6));
             outputList.Add(String.Format("[+] Spoofer IP Address = {0}", argSpooferIP));
-            if (!String.IsNullOrEmpty(argDHCPv6DNSSuffix)) outputList.Add(String.Format("[+] Spoofer IPv6 Address = {0}", argSpooferIPv6));
-            if (!String.IsNullOrEmpty(argDHCPv6DNSSuffix)) outputList.Add(String.Format("[+] Spoofer MAC Address = {0}", argMAC));
+            if (!String.IsNullOrEmpty(argSpooferIPv6)) outputList.Add(String.Format("[+] Spoofer IPv6 Address = {0}", argSpooferIPv6));
+            if (!String.IsNullOrEmpty(argMAC)) outputList.Add(String.Format("[+] Spoofer MAC Address = {0}", argMAC));
             if (argSpooferDomainsIgnore != null) outputList.Add(String.Format("[+] Spoofer Domain Ignore = {0}", String.Join(",", argSpooferDomainsIgnore)));
             if (argSpooferDomainsReply != null) outputList.Add(String.Format("[+] Spoofer Domains Reply = {0}", String.Join(",", argSpooferDomainsReply)));
             if (argSpooferHostsIgnore != null) outputList.Add(String.Format("[+] Spoofer Hosts Ignore = {0}", String.Join(",", argSpooferHostsIgnore)));
@@ -889,7 +888,7 @@ namespace Inveigh
                     snifferSpooferIPv6Thread.Start();
                 }
 
-                if (!String.IsNullOrEmpty(argIPv6) && enabledDHCPv6 && dhcpv6RA > 0)
+                if (!enabledInspect && !String.IsNullOrEmpty(argIPv6) && enabledDHCPv6 && dhcpv6RA > 0)
                 {
                     Thread icmpv6Thread = new Thread(() => ICMPv6.icmpv6RouterAdvertise(argIPv6, dhcpv6RA));
                     icmpv6Thread.Start();
@@ -928,8 +927,12 @@ namespace Inveigh
                     Thread dnsListenerThread = new Thread(() => DNS.DNSListener(argIP, argSpooferIP, argDNSTTL, argDNSHost, "IPv4", argDNSTypes));
                     dnsListenerThread.Start();
 
-                    Thread dnsListenerIPv6Thread = new Thread(() => DNS.DNSListener(argIPv6, argSpooferIP, argDNSTTL, argDNSHost, "IPv6", argDNSTypes));
-                    dnsListenerIPv6Thread.Start();
+                    if(!String.IsNullOrEmpty(argIPv6))
+                    {
+                        Thread dnsListenerIPv6Thread = new Thread(() => DNS.DNSListener(argIPv6, argSpooferIP, argDNSTTL, argDNSHost, "IPv6", argDNSTypes));
+                        dnsListenerIPv6Thread.Start();
+                    }
+                    
                 }
 
             }
@@ -1019,8 +1022,9 @@ namespace Inveigh
 
                         case "GET DHCPV6":
                             Console.Clear();
-                            foreach (string key in dhcpv6ClientTable.Keys)
-                                Console.WriteLine(key + "," + dhcpv6ClientTable[key]);
+                            string[] outputHost = hostList.ToArray();
+                            foreach (string entry in outputHost)
+                                Console.WriteLine(entry);
                             break;
 
                         case "GET NTLMV1":
@@ -1235,7 +1239,12 @@ namespace Inveigh
                     {
                         outputFileLog.WriteLine(logFileList[0]);
                         outputFileLog.Close();
-                        logFileList.RemoveAt(0);
+
+                        lock (logFileList)
+                        {
+                            logFileList.RemoveAt(0);
+                        }
+
                     }
 
                 }
@@ -1247,7 +1256,12 @@ namespace Inveigh
                     {
                         outputFileCleartext.WriteLine(cleartextFileList[0]);
                         outputFileCleartext.Close();
-                        cleartextFileList.RemoveAt(0);
+
+                        lock (cleartextFileList)
+                        {
+                            cleartextFileList.RemoveAt(0);
+                        }
+
                     }
 
                 }
@@ -1259,7 +1273,12 @@ namespace Inveigh
                     {
                         outputFileNTLMv1.WriteLine(ntlmv1FileList[0]);
                         outputFileNTLMv1.Close();
-                        ntlmv1FileList.RemoveAt(0);
+
+                        lock (ntlmv1FileList)
+                        {
+                            ntlmv1FileList.RemoveAt(0);
+                        }
+
                     }
 
                 }
@@ -1271,7 +1290,12 @@ namespace Inveigh
                     {
                         outputFileNTLMv2.WriteLine(ntlmv2FileList[0]);
                         outputFileNTLMv2.Close();
-                        ntlmv2FileList.RemoveAt(0);
+
+                        lock (ntlmv2FileList)
+                        {
+                            ntlmv2FileList.RemoveAt(0);
+                        }
+
                     }
 
                 }
@@ -1283,7 +1307,12 @@ namespace Inveigh
                     {
                         outputUsernameFileNTLMv1.WriteLine(ntlmv1UsernameFileList[0]);
                         outputUsernameFileNTLMv1.Close();
-                        ntlmv1UsernameFileList.RemoveAt(0);
+
+                        lock (ntlmv1UsernameList)
+                        {
+                            ntlmv1UsernameFileList.RemoveAt(0);
+                        }
+
                     }
 
                 }
@@ -1295,19 +1324,29 @@ namespace Inveigh
                     {
                         outputUsernameFileNTLMv2.WriteLine(ntlmv2UsernameFileList[0]);
                         outputUsernameFileNTLMv2.Close();
-                        ntlmv2UsernameFileList.RemoveAt(0);
+
+                        lock (ntlmv2UsernameFileList)
+                        {
+                            ntlmv2UsernameFileList.RemoveAt(0);
+                        }
+
                     }
 
                 }
 
-                if (dhcpv6FileList.Count > 0)
+                if (hostFileList.Count > 0)
                 {
 
                     using (StreamWriter outputDHCPv6File = new StreamWriter(Path.Combine(argFileOutputDirectory, String.Concat(argFilePrefix, "-DHCPv6.txt")), true))
                     {
-                        outputDHCPv6File.WriteLine(dhcpv6FileList[0]);
+                        outputDHCPv6File.WriteLine(hostFileList[0]);
                         outputDHCPv6File.Close();
-                        dhcpv6FileList.RemoveAt(0);
+
+                        lock (hostFileList)
+                        {
+                            hostFileList.RemoveAt(0);
+                        }
+
                     }
 
                 }

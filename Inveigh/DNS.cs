@@ -165,7 +165,7 @@ namespace Inveigh
                         dnsMemoryStream.Write((new byte[2] { 0xc0, 0x0c }), 0, 2);
                         dnsMemoryStream.Write((new byte[4] { 0x00, 0x21, 0x00, 0x01 }), 0, 4);
                         dnsMemoryStream.Write(ttlDNS, 0, 4);
-                        dnsMemoryStream.Write(Util.IntToByteArray2(dnsHostData.Length + 6), 0, 2);
+                        dnsMemoryStream.Write(Util.IntToByteArray2(dnsHostFullData.Length + 6), 0, 2);
                         dnsMemoryStream.Write((new byte[2] { 0x00, 0x00 }), 0, 2);
                         dnsMemoryStream.Write((new byte[2] { 0x00, 0x65 }), 0, 2);
 

@@ -14,7 +14,13 @@ namespace Inveigh
         public static void LLMNRListener(string IP, string spooferIP, string spooferIPv6, string llmnrTTL, string ipVersion)
         {
             byte[] spooferIPData = IPAddress.Parse(spooferIP).GetAddressBytes();
-            byte[] spooferIPv6Data = IPAddress.Parse(spooferIPv6).GetAddressBytes();
+            byte[] spooferIPv6Data = new byte[16];
+
+            if (!String.IsNullOrEmpty(spooferIPv6))
+            {
+                spooferIPv6Data = IPAddress.Parse(spooferIPv6).GetAddressBytes();
+            }
+
             byte[] ttlLLMNR = BitConverter.GetBytes(Int32.Parse(llmnrTTL));
             Array.Reverse(ttlLLMNR);
             IPAddress llmnrListenerIP = IPAddress.Any;

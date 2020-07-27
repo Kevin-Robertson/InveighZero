@@ -71,8 +71,8 @@ namespace Inveigh
             if (String.Equals(ipVersion, "IPv6"))
             {
                 ipVersionAddressFamily = AddressFamily.InterNetworkV6;
-
             }
+
             Socket udpSendSocket = new Socket(ipVersionAddressFamily, SocketType.Raw, ProtocolType.Udp);
             udpSendSocket.SendBufferSize = 1024;
 

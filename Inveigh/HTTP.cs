@@ -35,7 +35,7 @@ namespace Inveigh
             if (proxyListener)
             {
                 httpType = "Proxy";
-                httpListener.Server.LingerState = new LingerOption(true,0);
+                httpListener.Server.LingerState = new LingerOption(true, 0);
             }
 
             try
@@ -59,7 +59,7 @@ namespace Inveigh
 
                 do
                 {
-                    System.Threading.Thread.Sleep(10);
+                    Thread.Sleep(10);
 
                     if (Program.exitInveigh)
                     {

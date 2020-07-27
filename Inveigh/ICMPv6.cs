@@ -13,7 +13,7 @@ namespace Inveigh
     {
         public static void icmpv6RouterAdvertise(string ipV6, int interval)
         {
-            interval = interval * 1000;
+            interval *= 1000;
 
             while (!Program.exitInveigh)
             {
@@ -28,7 +28,8 @@ namespace Inveigh
                     Array.Reverse(packetChecksum);
                     icmpv6MemoryStream.Write(packetChecksum, 0, 2);
                     Socket icmpv6SendSocket = new Socket(AddressFamily.InterNetworkV6, SocketType.Raw, ProtocolType.IcmpV6);
-                    icmpv6SendSocket.SendBufferSize = 1024;
+                    icmpv6SendSocket.SetSocketOption(SocketOptionLevel.IPv6, SocketOptionName.MulticastTimeToLive, 255);
+                    icmpv6SendSocket.SendBufferSize = 16;
                     IPEndPoint icmpv6EndPoint = new IPEndPoint(IPAddress.Parse("ff02::1"), 0);
                     icmpv6SendSocket.SendTo(icmpv6MemoryStream.ToArray(), 16, SocketFlags.None, icmpv6EndPoint);
                     icmpv6SendSocket.Close();

@@ -146,34 +146,42 @@ namespace Inveigh
                 nameRequestSplit = nameRequest.Split('.');
                 nameRequestHost = nameRequestSplit[0];
             }
+            else
+            {
+                nameRequestHost = nameRequest;
+            }
 
             if (!Program.enabledSpooferRepeat)
             {
 
                 if (String.Equals(type, "DNS"))
                 {
+                    string sourceIPCheck = sourceIP.Split('%')[0];
+                    string mappedIP = "";
+                    string host = "";
 
-                    if (Program.dhcpv6ClientTable.ContainsValue(sourceIP.Split('%')[0]))
+                    if (!Program.enabledSpooferRepeat)
                     {
-                        string hostFQDN = Program.dhcpv6ClientTable.Keys.OfType<String>().FirstOrDefault(s => Program.dhcpv6ClientTable[s].ToString() == sourceIP.Split('%')[0]);
-                        string host = hostFQDN.Split('.')[0].ToUpper();
-                        string mappedIP = "";
 
-                        //dupe
-                        foreach (string capture in Program.ntlmv2UsernameList)
+                        foreach (string hostMapping in Program.hostList)
                         {
+                            string[] hostArray = hostMapping.Split(',');
 
-                            if (!String.IsNullOrEmpty(capture.Split(',')[1]) && capture.Split(',')[1].StartsWith(host))
+                            if (!String.IsNullOrEmpty(hostArray[1]) && String.Equals(hostArray[1].Split('%')[0], sourceIPCheck.Split('%')[0]))
                             {
-                                mappedIP = capture.Split(',')[0];
+                                host = hostArray[0].Split('.')[0].ToUpper();
+                            }
+                            else if (!String.IsNullOrEmpty(hostArray[2]) && String.Equals(hostArray[2], sourceIPCheck))
+                            {
+                                host = hostArray[0].Split('.')[0].ToUpper();
                             }
 
                         }
 
-                        if (String.IsNullOrEmpty(mappedIP))
+                        if (!String.IsNullOrEmpty(host))
                         {
 
-                            foreach (string capture in Program.ntlmv1UsernameList)
+                            foreach (string capture in Program.ntlmv2UsernameList)
                             {
 
                                 if (!String.IsNullOrEmpty(capture.Split(',')[1]) && capture.Split(',')[1].StartsWith(host))
@@ -183,56 +191,51 @@ namespace Inveigh
 
                             }
 
-                        }
-
-                        if (!String.IsNullOrEmpty(mappedIP))
-                        {
-
-                            foreach (string capture in Program.ntlmv2UsernameList)
+                            if (String.IsNullOrEmpty(mappedIP))
                             {
 
-                                if (capture.StartsWith(mappedIP) && !capture.EndsWith("$"))
+                                foreach (string capture in Program.ntlmv1UsernameList)
                                 {
-                                    isRepeat = true;
+
+                                    if (!String.IsNullOrEmpty(capture.Split(',')[1]) && capture.Split(',')[1].StartsWith(host))
+                                    {
+                                        mappedIP = capture.Split(',')[0];
+                                    }
+
                                 }
 
                             }
 
-                            foreach (string capture in Program.ntlmv1UsernameList)
+                            if (!String.IsNullOrEmpty(mappedIP))
                             {
 
-                                if (capture.StartsWith(mappedIP) && !capture.EndsWith("$"))
+                                foreach (string capture in Program.ntlmv2UsernameList)
                                 {
-                                    isRepeat = true;
+
+                                    if (capture.StartsWith(mappedIP) && !capture.EndsWith("$"))
+                                    {
+                                        isRepeat = true;
+                                    }
+
+                                }
+
+                                foreach (string capture in Program.ntlmv1UsernameList)
+                                {
+
+                                    if (capture.StartsWith(mappedIP) && !capture.EndsWith("$"))
+                                    {
+                                        isRepeat = true;
+                                    }
+
                                 }
 
                             }
 
                         }
 
-                    }              
-
-                }
-
-                foreach (string capture in Program.ntlmv2UsernameList)
-                {
-
-                    if (capture.StartsWith(sourceIP) && !capture.EndsWith("$"))
-                    {
-                        isRepeat = true;
                     }
 
-                }
-
-                foreach (string capture in Program.ntlmv1UsernameList)
-                {
-
-                    if (capture.StartsWith(sourceIP) && !capture.EndsWith("$"))
-                    {
-                        isRepeat = true;
-                    }
-
-                }
+                }                
 
             }
 
@@ -281,12 +284,12 @@ namespace Inveigh
                 responseMessage = String.Concat(requestType, " replies disabled");
             }
             else if (Program.argSpooferHostsIgnore != null && Program.argSpooferHostsIgnore.Length > 0 && (Array.Exists(Program.argSpooferHostsIgnore, element => element == nameRequest.ToUpper()) ||
-                (!String.IsNullOrEmpty(nameRequestHost) && Array.Exists(Program.argSpooferHostsIgnore, element => element == nameRequestHost.ToUpper()))))
+                (Array.Exists(Program.argSpooferHostsIgnore, element => element == nameRequestHost.ToUpper()))))
             {
                 responseMessage = String.Concat(nameRequest, " is on ignore list");
             }
             else if (Program.argSpooferHostsReply != null && Program.argSpooferHostsReply.Length > 0 && (!Array.Exists(Program.argSpooferHostsReply, element => element == nameRequest.ToUpper()) &&
-                (!String.IsNullOrEmpty(nameRequestHost) && !Array.Exists(Program.argSpooferHostsReply, element => element == nameRequestHost.ToUpper()))))
+                (!Array.Exists(Program.argSpooferHostsReply, element => element == nameRequestHost.ToUpper()))))
             {
                 responseMessage = String.Concat(nameRequest, " not on reply list");
             }

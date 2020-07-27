@@ -417,6 +417,9 @@ namespace Inveigh
                                             byte[] dhcpv6ClientMACData = new byte[6];
                                             Buffer.BlockCopy(udpPayload, 22, dhcpv6ClientMACData, 0, 6);
                                             string dhcpv6ClientMAC = BitConverter.ToString(dhcpv6ClientMACData).Replace("-", ":");
+                                            byte[] dhcpv6ServerMACData = new byte[6];
+                                            Buffer.BlockCopy(udpPayload, 36, dhcpv6ServerMACData, 0, 6);
+                                            string dhcpv6ServerMAC = BitConverter.ToString(dhcpv6ServerMACData).Replace("-", ":");
                                             byte[] dhcpv6IAID = new byte[4];
 
                                             if ((int)dhcpv6MessageTypeID[0] == 1)
@@ -431,6 +434,7 @@ namespace Inveigh
                                             byte[] dhcpv6ClientIP = new byte[16];
                                             string dhcpv6LeaseIP = "";
                                             string dhcpv6FQDN = dhcpv6ClientMAC;
+                                            bool existingLease = false;
 
                                             if ((int)dhcpv6MessageTypeID[0] == 1 || (int)dhcpv6MessageTypeID[0] == 3 || (int)dhcpv6MessageTypeID[0] == 5)
                                             {
@@ -447,35 +451,75 @@ namespace Inveigh
 
                                                 int index = BitConverter.ToString(udpPayload).Replace("-", String.Empty).IndexOf("4D53465420352E30");
 
-                                                if ((int)dhcpv6MessageTypeID[0] == 5)
+                                                if (index >= 0)
                                                 {
-                                                    dhcpv6LeaseIP = sourceIPAddress.ToString();
-                                                    dhcpv6ClientIP = IPAddress.Parse(dhcpv6LeaseIP).GetAddressBytes();
-                                                }
-                                                else if (index >= 0 && Program.dhcpv6ClientTable.ContainsKey(dhcpv6FQDN))
-                                                {
-                                                    dhcpv6LeaseIP = Program.dhcpv6ClientTable[dhcpv6FQDN].ToString();
-                                                    dhcpv6ClientIP = IPAddress.Parse(dhcpv6LeaseIP).GetAddressBytes();
-                                                }
-                                                else if (index >= 0 && !Program.dhcpv6ClientTable.ContainsKey(dhcpv6FQDN))
-                                                {
-                                                    dhcpv6LeaseIP = "fe80::" + ipv6RandomValue + ":" + dhcpv6IPIndex;
-                                                    dhcpv6ClientIP = IPAddress.Parse(dhcpv6LeaseIP).GetAddressBytes();
-                                                }
 
-                                                if (index >= 0 && !Program.dhcpv6ClientTable.ContainsKey(dhcpv6FQDN))
-                                                {
-                                                    Program.dhcpv6ClientTable.Add(dhcpv6FQDN, dhcpv6LeaseIP);
-                                                    dhcpv6IPIndex++;
-
-                                                    lock (Program.dhcpv6FileList)
+                                                    if ((int)dhcpv6MessageTypeID[0] == 5)
                                                     {
-                                                        Program.dhcpv6FileList.Add(dhcpv6FQDN + "," + dhcpv6LeaseIP);
+                                                        dhcpv6LeaseIP = sourceIPAddress.ToString().Split('%')[0];
+                                                        dhcpv6ClientIP = IPAddress.Parse(dhcpv6LeaseIP).GetAddressBytes();
+
+                                                        foreach (string host in Program.hostList)
+                                                        {
+                                                            string[] hostArray = host.Split(',');
+
+                                                            if (!String.IsNullOrEmpty(hostArray[0]) && String.Equals(dhcpv6FQDN, hostArray[0]))
+                                                            {
+                                                                existingLease = true;
+                                                            }
+
+                                                        }
+
+                                                    }
+                                                    else
+                                                    {
+
+                                                        foreach (string host in Program.hostList)
+                                                        {
+                                                            string[] hostArray = host.Split(',');
+
+                                                            if (!String.IsNullOrEmpty(hostArray[0]) && String.Equals(dhcpv6FQDN, hostArray[0]))
+                                                            {
+                                                                dhcpv6LeaseIP = hostArray[2];
+                                                                dhcpv6ClientIP = IPAddress.Parse(dhcpv6LeaseIP).GetAddressBytes();
+                                                                existingLease = true;
+                                                            }
+
+                                                        }
+
+                                                    }
+
+                                                    if (String.IsNullOrEmpty(dhcpv6LeaseIP))
+                                                    {
+                                                        dhcpv6LeaseIP = "fe80::" + ipv6RandomValue + ":" + dhcpv6IPIndex;
+                                                        dhcpv6ClientIP = IPAddress.Parse(dhcpv6LeaseIP).GetAddressBytes();
+                                                        dhcpv6IPIndex++;
+                                                    }
+
+                                                    if (!existingLease)
+                                                    {
+                                                        string slaacIP = "";
+                                                        
+                                                        if(!String.Equals(sourceIPAddress.ToString().Split('%')[0], dhcpv6LeaseIP))
+                                                        {
+                                                            slaacIP = sourceIPAddress.ToString().Split('%')[0];
+                                                        }
+
+                                                        lock (Program.hostList)
+                                                        {
+                                                            Program.hostList.Add(dhcpv6FQDN + "," + slaacIP + "," + dhcpv6LeaseIP);
+                                                        }
+
+                                                        lock (Program.hostFileList)
+                                                        {
+                                                            Program.hostFileList.Add(dhcpv6FQDN + "," + slaacIP + "," + dhcpv6LeaseIP);
+                                                        }
+
                                                     }
 
                                                 }
 
-                                                string dhcpv6ResponseMessage = DHCPv6.DHCPv6Output(dhcpv6ClientMAC, dhcpv6FQDN, dhcpv6LeaseIP, sourceIPAddress.ToString(), snifferMAC, index, (int)dhcpv6MessageTypeID[0]);
+                                                string dhcpv6ResponseMessage = DHCPv6.DHCPv6Output(dhcpv6ClientMAC, dhcpv6FQDN, dhcpv6LeaseIP, sourceIPAddress.ToString(), snifferMAC, dhcpv6ServerMAC, index, (int)dhcpv6MessageTypeID[0]);
 
                                                 if (String.Equals(dhcpv6ResponseMessage, "response sent"))
                                                 {
