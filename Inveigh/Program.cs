@@ -1,13 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Net;
-using System.Net.Sockets;
 using System.IO;
 using System.Threading;
 using System.Collections;
-using System.Diagnostics;
 using System.Globalization;
 using System.Text.RegularExpressions;
 
@@ -18,10 +15,11 @@ namespace Inveigh
     {
         public static Hashtable smbSessionTable = Hashtable.Synchronized(new Hashtable());
         public static Hashtable httpSessionTable = Hashtable.Synchronized(new Hashtable());
+        public static Hashtable adidnsTable = Hashtable.Synchronized(new Hashtable());
         public static IList<string> outputList = new List<string>();
-        static IList<string> consoleList = new List<string>();
-        static IList<string> logList = new List<string>();
-        static IList<string> logFileList = new List<string>();
+        public static IList<string> consoleList = new List<string>();
+        public static IList<string> logList = new List<string>();
+        public static IList<string> logFileList = new List<string>();
         public static IList<string> cleartextList = new List<string>();
         public static IList<string> cleartextFileList = new List<string>();
         public static IList<string> hostList = new List<string>();
@@ -45,6 +43,7 @@ namespace Inveigh
         public static bool enabledDHCPv6Local = false;
         public static bool enabledDNS = false;
         public static bool enabledInspect = false;
+        public static bool enabledADIDNS = false;
         public static bool enabledNBNS = false;
         public static bool enabledLLMNR = false;
         public static bool enabledLLMNRv6 = false;
@@ -64,83 +63,105 @@ namespace Inveigh
         public static string[] argSpooferIPsReply;
         public static string[] argSpooferMACsIgnore;
         public static string[] argSpooferMACsReply;
-        public static string argFileOutputDirectory = System.IO.Directory.GetCurrentDirectory();
+        public static string argFileOutputDirectory = Directory.GetCurrentDirectory();
         public static string argFilePrefix = "Inveigh";
 
-        static void Main(string[] args)
-        {           
-            string argChallenge = "";
-            string argConsoleQueueLimit = "-1";
-            string argConsoleStatus = "0";
-            string argConsoleUnique = "Y";
-            string argDHCPv6 = "N";
-            string argDHCPv6Local = "N";
-            string argDHCPv6DNSSuffix = "";
-            string argDHCPv6RA = "30";
-            string argDNS = "Y";
-            string argDNSHost = "";
-            string argDNSTTL = "30";
-            string[] argDNSTypes = { "A" };
-            string argElevated = "Y";
-            string argFileOutput = "Y";
-            string argFileUnique = "Y";
-            string argHelp = "";
-            string argHTTP = "Y";
-            string argHTTPAuth = "NTLM";
-            string argHTTPBasicRealm = "ADFS";
-            string argHTTPIP = "0.0.0.0";
-            string argHTTPPort = "80";
-            string argHTTPResponse = "";
-            string argIP = "";
-            string argIPv6 = "";
-            bool argInspect = false;
-            string argLLMNR = "Y";
-            string argLLMNRTTL = "30";
-            string argLLMNRv6 = "N";
-            string argLogOutput = "Y";
-            string argMAC = "";
-            string argMachineAccounts = "N";
-            string argMDNS = "N";
-            string argMDNSTTL = "120";
-            string[] argMDNSQuestions = { "QU", "QM" };
-            string[] argMDNSTypes = { "A" };
-            string argNBNS = "N";
-            string argNBNSTTL = "165";
-            string[] argNBNSTypes = { "00", "20" };
-            string argPcap = "N";
-            string[] argPcapTCP = { "139", "445" };
-            string[] argPcapUDP = null;
-            string argProxy = "N";
-            string argProxyAuth = "NTLM";
-            string[] argProxyIgnore = { "Firefox" };
-            string argProxyIP = "0.0.0.0";
-            string argProxyPort = "8492";
-            string argProxyPortFailover = "";
-            string argSMB = "Y";
-            string argSpooferIP = "";
-            string argSpooferIPv6 = "";
-            string argSpooferRepeat = "Y";
-            string argRunCount = "0";
-            string argRunTime = "0";
-            string argWPADAuth = "NTLM";
-            string[] argWPADAuthIgnore = { "Firefox" };
-            string[] argWPADDirectHosts = null;
-            string argWPADIP = "";
-            string argWPADPort = "";
-            string argWPADResponse = "function FindProxyForURL(url,host) {return \"DIRECT\";}";
-            //end parameters
+        public static string argChallenge = "";
+        public static string argConsole = "2";
+        public static string argConsoleQueueLimit = "-1";
+        public static string argConsoleStatus = "0";
+        public static string argConsoleUnique = "Y";
+        public static string argDHCPv6 = "N";
+        public static string argDHCPv6Local = "N";
+        public static string argDHCPv6DNSSuffix = "";
+        public static string argDHCPv6RA = "30";
+        public static string argDNS = "Y";
+        public static string argDNSHost = "";
+        public static string argDNSTTL = "30";
+        public static string[] argDNSTypes = { "A" };
+        public static string argElevated = "Y";
+        public static string argFileOutput = "Y";
+        public static string argFileUnique = "Y";
+        public static string argHelp = "";
+        public static string argHTTP = "Y";
+        public static string argHTTPAuth = "NTLM";
+        public static string argHTTPBasicRealm = "ADFS";
+        public static string argHTTPIP = "0.0.0.0";
+        public static string argHTTPPort = "80";
+        public static string argHTTPResponse = "";
+        public static string argIP = "";
+        public static string argIPv6 = "";
+        public static string argLLMNR = "Y";
+        public static string argLLMNRTTL = "30";
+        public static string[] argLLMNRTypes = { "A" };
+        public static string argLLMNRv6 = "N";
+        public static string argLogOutput = "Y";
+        public static string argMAC = "";
+        public static string argMachineAccounts = "N";
+        public static string argMDNS = "N";
+        public static string argMDNSTTL = "120";
+        public static string[] argMDNSQuestions = { "QU" };
+        public static string[] argMDNSTypes = { "A" };
+        public static string argNBNS = "N";
+        public static string argNBNSTTL = "165";
+        public static string[] argNBNSTypes = { "00", "20" };
+        public static string argPcap = "N";
+        public static string[] argPcapTCP = { "139", "445" };
+        public static string[] argPcapUDP = null;
+        public static string argProxy = "N";
+        public static string argProxyAuth = "NTLM";
+        public static string[] argProxyIgnore = { "Firefox" };
+        public static string argProxyIP = "0.0.0.0";
+        public static string argProxyPort = "8492";
+        public static string argProxyPortFailover = "";
+        public static string argSMB = "Y";
+        public static string argSpooferIP = "";
+        public static string argSpooferIPv6 = "";
+        public static string argSpooferRepeat = "Y";
+        public static string argRunCount = "0";
+        public static string argRunTime = "0";
+        public static string argWPADAuth = "NTLM";
+        public static string[] argWPADAuthIgnore = { "Firefox" };
+        public static string[] argWPADdnsDomainIsHostsDirect = null;
+        public static string[] argWPADshExpMatchHostsDirect = null;
+        public static string[] argWPADshExpMatchURLsDirect = null;
+        public static string[] argWPADdnsDomainIsHostsProxy = null;
+        public static string[] argWPADshExpMatchHostsProxy = null;
+        public static string[] argWPADshExpMatchURLsProxy = null;
+        public static string argWPADIP = "";
+        public static string argWPADPort = "";
+        public static string argWPADResponse = "function FindProxyForURL(url,host) {return \"DIRECT\";}";
 
-            bool isArgNBNS = false;
-            bool isSession = false;
-            string computerName = System.Environment.MachineName;
-            string netbiosDomain = System.Environment.UserDomainName;
-            string dnsDomain = "";
-            string wpadDirectHosts = "";
+        public static IPAddress ipAddress;
+        public static IPAddress ipv6Address;
+        public static int dhcpv6Random = (new Random()).Next(1, 9999);
+        public static byte[] spooferIPData;
+        public static byte[] spooferIPv6Data;
+        public static byte[] macData = new byte[6];
+        public static int dhcpv6IPIndex = 1;
+        public static int console;
+        public static string computerName = Environment.MachineName;
+        public static string netbiosDomain = Environment.UserDomainName;
+        public static string dnsDomain = "";
+        public static FileStream pcapFile = null;
+
+        static void Main(string[] args)
+        {
+            
+            //end parameters
+            string version = "0.92 Dev";          
+            string wpadDNSDomainIsHostsDirect = "";
+            string wpadSHExpMatchHostsDirect = "";
+            string wpadSHExpMatchURLsDirect = "";
+            string wpadDNSDomainIsHostsProxy = "";
+            string wpadSHExpMatchHostsProxy = "";
+            string wpadSHExpMatchURLsProxy = "";
             int consoleQueueLimit = -1;
             int consoleStatus = 0;
-            int runCount = 0;
+            int runCount = 0; // todo check
             int runTime = 0;
             int dhcpv6RA = 0;
+            bool isSession = false;
             IList wpadDirectHostsList = new List<string>();
 
             try
@@ -155,406 +176,439 @@ namespace Inveigh
             if (args.Length > 0)
             {
 
+                
                 foreach (var entry in args.Select((value, index) => new { index, value }))
                 {
                     string arg = entry.value.ToUpper();
 
-                    switch (arg)
+                    try
                     {
-                        case "-CHALLENGE":
-                        case "/CHALLENGE":
-                            argChallenge = args[entry.index + 1].ToUpper();
-                            break;
-
-                        case "-CONSOLEQUEUELIMIT":
-                        case "/CONSOLEQUEUELIMIT":
-                            argConsoleQueueLimit = args[entry.index + 1];
-                            break;
-
-                        case "-CONSOLESTATUS":
-                        case "/CONSOLESTATUS":
-                            argConsoleStatus = args[entry.index + 1];
-                            break;
-
-                        case "-CONSOLEUNIQUE":
-                        case "/CONSOLEUNIQUE":
-                            argConsoleUnique = args[entry.index + 1].ToUpper();
-                            break;
-
-                        case "-DHCPV6":
-                        case "/DHCPV6":
-                            argDHCPv6 = args[entry.index + 1].ToUpper();
-                            break;
-
-                        case "-DHCPV6LOCAL":
-                        case "/DHCPV6LOCAL":
-                            argDHCPv6Local = args[entry.index + 1].ToUpper();
-                            break;
-
-                        case "-DHCPV6DNSSUFFIX":
-                        case "/DHCPV6DNSSUFFIX":
-                            argDHCPv6DNSSuffix = args[entry.index + 1];
-                            break;
-
-                        case "-DHCPV6RA":
-                        case "/DHCPV6RA":
-                            argDHCPv6RA = args[entry.index + 1];
-                            break;
-
-                        case "-DNS":
-                        case "/DNS":
-                            argDNS = args[entry.index + 1].ToUpper();
-                            break;
-
-                        case "-DNSHOST":
-                        case "/DNSHOST":
-                            argDNSHost = args[entry.index + 1];
-                            break;
-
-                        case "-DNSTTL":
-                        case "/DNSTTL":
-                            argDNSTTL = args[entry.index + 1].ToUpper();
-                            break;
-
-                        case "-DNSTYPES":
-                        case "/DNSTYPES":
-                            argDNSTypes = args[entry.index + 1].ToUpper().Split(',');
-                            break;
-
-                        case "-ELEVATED":
-                        case "/ELEVATED":
-                            argElevated = args[entry.index + 1].ToUpper();
-                            break;
-
-                        case "-FILEOUTPUT":
-                        case "/FILEOUTPUT":
-                            argFileOutput = args[entry.index + 1].ToUpper();
-                            break;
-
-                        case "-FILEOUTPUTDIRECTORY":
-                        case "/FILEOUTPUTDIRECTORY":
-                            argFileOutputDirectory = args[entry.index + 1].ToUpper();
-                            break;
-                        case "-FILEPREFIX":
-                        case "/FILEPREFIX":
-                            argFilePrefix = args[entry.index + 1].ToUpper();
-                            break;
-
-                        case "-FILEUNIQUE":
-                        case "/FILEUNIQUE":
-                            argFileUnique = args[entry.index + 1].ToUpper();
-                            break;
-
-                        case "-HTTP":
-                        case "/HTTP":
-                            argHTTP = args[entry.index + 1].ToUpper();
-                            break;
-
-                        case "-HTTPAUTH":
-                        case "/HTTPAUTH":
-                            argHTTPAuth = args[entry.index + 1].ToUpper();
-                            break;
-
-                        case "-HTTPBASICREALM":
-                        case "/HTTPBASICREALM":
-                            argHTTPBasicRealm = args[entry.index + 1];
-                            break;
-
-                        case "-HTTPIP":
-                        case "/HTTPIP":
-                            argHTTPIP = args[entry.index + 1];
-                            break;
-
-                        case "-HTTPPORT":
-                        case "/HTTPPORT":
-                            argHTTPPort = args[entry.index + 1];
-                            break;
-
-                        case "-HTTPRESPONSE":
-                        case "/HTTPRESPONSE":
-                            argHTTPResponse = args[entry.index + 1];
-                            break;
-
-                        case "-INSPECT":
-                        case "/INSPECT":
-                            argInspect = true;
-                            break;
-
-                        case "-IP":
-                        case "/IP":
-                            argIP = args[entry.index + 1].ToUpper();
-                            break;
-
-                        case "-IPV6":
-                        case "/IPV6":
-                            argIPv6 = args[entry.index + 1].ToUpper();
-                            break;
-
-                        case "-LLMNR":
-                        case "/LLMNR":
-                            argLLMNR = args[entry.index + 1].ToUpper();
-                            break;
-
-                        case "-LLMNRV6":
-                        case "/LLMNRV6":
-                            argLLMNRv6 = args[entry.index + 1].ToUpper();
-                            break;
-
-                        case "-LLMNRTTL":
-                        case "/LLMNRTTL":
-                            argLLMNRTTL = args[entry.index + 1].ToUpper();
-                            break;
-
-                        case "-LOGOUTPUT":
-                        case "/LOGOUTPUT":
-                            argLogOutput = args[entry.index + 1].ToUpper();
-                            break;
-
-                        case "-MAC":
-                        case "/MAC":
-                            argMAC = args[entry.index + 1].ToUpper().Replace(":", "").Replace("-", "");
-                            break;
-
-                        case "-MACHINEACCOUNTS":
-                        case "/MACHINEACCOUNTS":
-                            argMachineAccounts = args[entry.index + 1].ToUpper();
-                            break;
-
-                        case "-MDNS":
-                        case "/MDNS":
-                            argMDNS = args[entry.index + 1].ToUpper();
-                            break;
-
-                        case "-MDNSTTL":
-                        case "/MDNSTTL":
-                            argMDNSTTL = args[entry.index + 1].ToUpper();
-                            break;
-
-                        case "-MDNSQUESTIONS":
-                        case "/MDNSQUESTIONS":
-                            argMDNSQuestions = args[entry.index + 1].ToUpper().Split(',');
-                            break;
-
-                        case "-MDNSTYPES":
-                        case "/MDNSTYPES":
-                            argMDNSTypes = args[entry.index + 1].ToUpper().Split(',');
-                            break;
-
-                        case "-NBNS":
-                        case "/NBNS":
-                            argNBNS = args[entry.index + 1].ToUpper();
-                            isArgNBNS = true;
-                            break;
-
-                        case "-NBNSTTL":
-                        case "/NBNSTTL":
-                            argNBNSTTL = args[entry.index + 1].ToUpper();
-                            break;
-
-                        case "-NBNSTYPES":
-                        case "/NBNSTYPES":
-                            argNBNSTypes = args[entry.index + 1].ToUpper().Split(',');
-                            break;
-
-                        case "-PCAP":
-                        case "/PCAP":
-                            argPcap = args[entry.index + 1].ToUpper();
-                            break;
-
-                        case "-PCAPTCP":
-                        case "/PCAPTCP":
-                            argPcapTCP = args[entry.index + 1].ToUpper().Split(',');
-                            break;
-
-                        case "-PCAPUDP":
-                        case "/PCAPUDP":
-                            argPcapUDP = args[entry.index + 1].ToUpper().Split(',');
-                            break;
-
-                        case "-PROXY":
-                        case "/PROXY":
-                            argProxy = args[entry.index + 1].ToUpper();
-                            break;
-
-                        case "-PROXYIGNORE":
-                        case "/PROXYIGNORE":
-                            argProxyIgnore = args[entry.index + 1].Split(',');
-                            break;
-
-                        case "-PROXYIP":
-                        case "/PROXYIP":
-                            argProxyIP = args[entry.index + 1];
-                            break;
-
-                        case "-PROXYPORT":
-                        case "/PROXYPORT":
-                            argProxyPort = args[entry.index + 1];
-                            break;
-
-                        case "-RUNCOUNT":
-                        case "/RUNCOUNT":
-                            argRunCount = args[entry.index + 1];
-                            break;
-
-                        case "-RUNTIME":
-                        case "/RUNTIME":
-                            argRunTime = args[entry.index + 1];
-                            break;
-
-                        case "-SMB":
-                        case "/SMB":
-                            argSMB = args[entry.index + 1].ToUpper();
-                            break;
-
-                        case "-SPOOFERDOMAINSIGNORE":
-                        case "/SPOOFERDOMAINSIGNORE":
-                            argSpooferDomainsIgnore = args[entry.index + 1].ToUpper().Split(',');
-                            break;
-
-                        case "-SPOOFERDOMAINSREPLY":
-                        case "/SPOOFERDOMAINSREPLY":
-                            argSpooferDomainsReply = args[entry.index + 1].ToUpper().Split(',');
-                            break;
-
-                        case "-SPOOFERHOSTSIGNORE":
-                        case "/SPOOFERHOSTSIGNORE":
-                            argSpooferHostsIgnore = args[entry.index + 1].ToUpper().Split(',');
-                            break;
-
-                        case "-SPOOFERHOSTSREPLY":
-                        case "/SPOOFERHOSTSREPLY":
-                            argSpooferHostsReply = args[entry.index + 1].ToUpper().Split(',');
-                            break;
-
-                        case "-SPOOFERIP":
-                        case "/SPOOFERIP":
-                            argSpooferIP = args[entry.index + 1];
-                            break;
-
-                        case "-SPOOFERIPV6":
-                        case "/SPOOFERIPV6":
-                            argSpooferIPv6 = args[entry.index + 1].ToUpper();
-                            break;
-
-                        case "-SPOOFERIPSIGNORE":
-                        case "/SPOOFERIPSIGNORE":
-                            argSpooferIPsIgnore = args[entry.index + 1].ToUpper().Split(',');
-                            break;
-
-                        case "-SPOOFERIPSREPLY":
-                        case "/SPOOFERIPSREPLY":
-                            argSpooferIPsReply = args[entry.index + 1].ToUpper().Split(',');
-                            break;
-
-                        case "-SPOOFERMACSIGNORE":
-                        case "/SPOOFERMACSIGNORE":
-                            argSpooferMACsIgnore = args[entry.index + 1].ToUpper().Replace(":","").Replace("-", "").Split(',');
-                            break;
-
-                        case "-SPOOFERMACSREPLY":
-                        case "/SPOOFERMACSREPLY":
-                            argSpooferMACsReply = args[entry.index + 1].ToUpper().Replace(":","").Replace("-", "").Split(',');
-                            break;
-
-                        case "-SPOOFERREPEAT":
-                        case "/SPOOFERREPEAT":
-                            argSpooferRepeat = args[entry.index + 1].ToUpper();
-                            break;
-
-                        case "-WPADAUTH":
-                        case "/WPADAUTH":
-                            argWPADAuth = args[entry.index + 1].ToUpper();
-                            break;
-
-                        case "-WPADAUTHIGNORE":
-                        case "/WPADAUTHIGNORE":
-                            argWPADAuthIgnore = args[entry.index + 1].Split(',');
-                            break;
-
-                        case "-WPADDIRECTHOSTS":
-                        case "/WPADDIRECTHOSTS":
-                            argWPADDirectHosts = args[entry.index + 1].Split(',');
-                            break;
-
-                        case "-WPADIP":
-                        case "/WPADIP":
-                            argWPADIP = args[entry.index + 1];
-                            break;
-
-                        case "-WPADPORT":
-                        case "/WPADPORT":
-                            argWPADPort = args[entry.index + 1];
-                            break;
-
-                        case "-WPADRESPONSE":
-                        case "/WPADRESPONSE":
-                            argWPADResponse = args[entry.index + 1];
-                            break;
-
-                        case "-?":
-                        case "/?":
-                            if (args.Length > 1)
-                                argHelp = args[entry.index + 1].ToUpper();
-                            GetHelp(argHelp);
-                            Environment.Exit(0);
-                            break;
-
-                        default:
-                            if (arg.StartsWith("-") || arg.StartsWith("/"))
-                                throw new ArgumentException(paramName: arg, message: "Invalid Parameter");
-                            break;
+
+                        switch (arg)
+                        {
+
+                            case "-CHALLENGE":
+                            case "/CHALLENGE":
+                                argChallenge = args[entry.index + 1].ToUpper();
+                                break;
+
+                            case "-CONSOLE":
+                            case "/CONSOLE":
+                                argConsole = args[entry.index + 1].ToUpper();
+                                break;
+
+                            case "-CONSOLEQUEUELIMIT":
+                            case "/CONSOLEQUEUELIMIT":
+                                argConsoleQueueLimit = args[entry.index + 1];
+                                break;
+
+                            case "-CONSOLESTATUS":
+                            case "/CONSOLESTATUS":
+                                argConsoleStatus = args[entry.index + 1];
+                                break;
+
+                            case "-CONSOLEUNIQUE":
+                            case "/CONSOLEUNIQUE":
+                                argConsoleUnique = args[entry.index + 1].ToUpper();
+                                break;
+
+                            case "-DHCPV6":
+                            case "/DHCPV6":
+                                argDHCPv6 = args[entry.index + 1].ToUpper();
+                                break;
+
+                            case "-DHCPV6LOCAL":
+                            case "/DHCPV6LOCAL":
+                                argDHCPv6Local = args[entry.index + 1].ToUpper();
+                                break;
+
+                            case "-DHCPV6DNSSUFFIX":
+                            case "/DHCPV6DNSSUFFIX":
+                                argDHCPv6DNSSuffix = args[entry.index + 1];
+                                break;
+
+                            case "-DHCPV6RA":
+                            case "/DHCPV6RA":
+                                argDHCPv6RA = args[entry.index + 1];
+                                break;
+
+                            case "-DNS":
+                            case "/DNS":
+                                argDNS = args[entry.index + 1].ToUpper();
+                                break;
+
+                            case "-DNSHOST":
+                            case "/DNSHOST":
+                                argDNSHost = args[entry.index + 1];
+                                break;
+
+                            case "-DNSTTL":
+                            case "/DNSTTL":
+                                argDNSTTL = args[entry.index + 1].ToUpper();
+                                break;
+
+                            case "-DNSTYPES":
+                            case "/DNSTYPES":
+                                argDNSTypes = args[entry.index + 1].ToUpper().Split(',');
+                                break;
+
+                            case "-ELEVATED":
+                            case "/ELEVATED":
+                                argElevated = args[entry.index + 1].ToUpper();
+                                break;
+
+                            case "-FILEOUTPUT":
+                            case "/FILEOUTPUT":
+                                argFileOutput = args[entry.index + 1].ToUpper();
+                                break;
+
+                            case "-FILEOUTPUTDIRECTORY":
+                            case "/FILEOUTPUTDIRECTORY":
+                                argFileOutputDirectory = args[entry.index + 1].ToUpper();
+                                break;
+                            case "-FILEPREFIX":
+                            case "/FILEPREFIX":
+                                argFilePrefix = args[entry.index + 1].ToUpper();
+                                break;
+
+                            case "-FILEUNIQUE":
+                            case "/FILEUNIQUE":
+                                argFileUnique = args[entry.index + 1].ToUpper();
+                                break;
+
+                            case "-HTTP":
+                            case "/HTTP":
+                                argHTTP = args[entry.index + 1].ToUpper();
+                                break;
+
+                            case "-HTTPAUTH":
+                            case "/HTTPAUTH":
+                                argHTTPAuth = args[entry.index + 1].ToUpper();
+                                break;
+
+                            case "-HTTPBASICREALM":
+                            case "/HTTPBASICREALM":
+                                argHTTPBasicRealm = args[entry.index + 1];
+                                break;
+
+                            case "-HTTPIP":
+                            case "/HTTPIP":
+                                argHTTPIP = args[entry.index + 1];
+                                break;
+
+                            case "-HTTPPORT":
+                            case "/HTTPPORT":
+                                argHTTPPort = args[entry.index + 1];
+                                break;
+
+                            case "-HTTPRESPONSE":
+                            case "/HTTPRESPONSE":
+                                argHTTPResponse = args[entry.index + 1];
+                                break;
+
+                            case "-INSPECT":
+                            case "/INSPECT":
+                                enabledInspect = true;
+                                break;
+
+                            case "-IP":
+                            case "/IP":
+                                argIP = args[entry.index + 1].ToUpper();
+                                break;
+
+                            case "-IPV6":
+                            case "/IPV6":
+                                argIPv6 = args[entry.index + 1].ToUpper();
+                                break;
+
+                            case "-LLMNR":
+                            case "/LLMNR":
+                                argLLMNR = args[entry.index + 1].ToUpper();
+                                break;
+
+                            case "-LLMNRV6":
+                            case "/LLMNRV6":
+                                argLLMNRv6 = args[entry.index + 1].ToUpper();
+                                break;
+
+                            case "-LLMNRTTL":
+                            case "/LLMNRTTL":
+                                argLLMNRTTL = args[entry.index + 1].ToUpper();
+                                break;
+
+                            case "-LOGOUTPUT":
+                            case "/LOGOUTPUT":
+                                argLogOutput = args[entry.index + 1].ToUpper();
+                                break;
+
+                            case "-MAC":
+                            case "/MAC":
+                                argMAC = args[entry.index + 1].ToUpper().Replace(":", "").Replace("-", "");
+                                break;
+
+                            case "-MACHINEACCOUNTS":
+                            case "/MACHINEACCOUNTS":
+                                argMachineAccounts = args[entry.index + 1].ToUpper();
+                                break;
+
+                            case "-MDNS":
+                            case "/MDNS":
+                                argMDNS = args[entry.index + 1].ToUpper();
+                                break;
+
+                            case "-MDNSTTL":
+                            case "/MDNSTTL":
+                                argMDNSTTL = args[entry.index + 1].ToUpper();
+                                break;
+
+                            case "-MDNSQUESTIONS":
+                            case "/MDNSQUESTIONS":
+                                argMDNSQuestions = args[entry.index + 1].ToUpper().Split(',');
+                                break;
+
+                            case "-MDNSTYPES":
+                            case "/MDNSTYPES":
+                                argMDNSTypes = args[entry.index + 1].ToUpper().Split(',');
+                                break;
+
+                            case "-NBNS":
+                            case "/NBNS":
+                                argNBNS = args[entry.index + 1].ToUpper();
+                                break;
+
+                            case "-NBNSTTL":
+                            case "/NBNSTTL":
+                                argNBNSTTL = args[entry.index + 1].ToUpper();
+                                break;
+
+                            case "-NBNSTYPES":
+                            case "/NBNSTYPES":
+                                argNBNSTypes = args[entry.index + 1].ToUpper().Split(',');
+                                break;
+
+                            case "-PCAP":
+                            case "/PCAP":
+                                argPcap = args[entry.index + 1].ToUpper();
+                                break;
+
+                            case "-PCAPTCP":
+                            case "/PCAPTCP":
+                                argPcapTCP = args[entry.index + 1].ToUpper().Split(',');
+                                break;
+
+                            case "-PCAPUDP":
+                            case "/PCAPUDP":
+                                argPcapUDP = args[entry.index + 1].ToUpper().Split(',');
+                                break;
+
+                            case "-PROXY":
+                            case "/PROXY":
+                                argProxy = args[entry.index + 1].ToUpper();
+                                break;
+
+                            case "-PROXYIGNORE":
+                            case "/PROXYIGNORE":
+                                argProxyIgnore = args[entry.index + 1].Split(',');
+                                break;
+
+                            case "-PROXYIP":
+                            case "/PROXYIP":
+                                argProxyIP = args[entry.index + 1];
+                                break;
+
+                            case "-PROXYPORT":
+                            case "/PROXYPORT":
+                                argProxyPort = args[entry.index + 1];
+                                break;
+
+                            case "-RUNCOUNT":
+                            case "/RUNCOUNT":
+                                argRunCount = args[entry.index + 1];
+                                break;
+
+                            case "-RUNTIME":
+                            case "/RUNTIME":
+                                argRunTime = args[entry.index + 1];
+                                break;
+
+                            case "-SMB":
+                            case "/SMB":
+                                argSMB = args[entry.index + 1].ToUpper();
+                                break;
+
+                            case "-SPOOFERDOMAINSIGNORE":
+                            case "/SPOOFERDOMAINSIGNORE":
+                                argSpooferDomainsIgnore = args[entry.index + 1].ToUpper().Split(',');
+                                break;
+
+                            case "-SPOOFERDOMAINSREPLY":
+                            case "/SPOOFERDOMAINSREPLY":
+                                argSpooferDomainsReply = args[entry.index + 1].ToUpper().Split(',');
+                                break;
+
+                            case "-SPOOFERHOSTSIGNORE":
+                            case "/SPOOFERHOSTSIGNORE":
+                                argSpooferHostsIgnore = args[entry.index + 1].ToUpper().Split(',');
+                                break;
+
+                            case "-SPOOFERHOSTSREPLY":
+                            case "/SPOOFERHOSTSREPLY":
+                                argSpooferHostsReply = args[entry.index + 1].ToUpper().Split(',');
+                                break;
+
+                            case "-SPOOFERIP":
+                            case "/SPOOFERIP":
+                                argSpooferIP = args[entry.index + 1];
+                                break;
+
+                            case "-SPOOFERIPV6":
+                            case "/SPOOFERIPV6":
+                                argSpooferIPv6 = args[entry.index + 1].ToUpper();
+                                break;
+
+                            case "-SPOOFERIPSIGNORE":
+                            case "/SPOOFERIPSIGNORE":
+                                argSpooferIPsIgnore = args[entry.index + 1].ToUpper().Split(',');
+                                break;
+
+                            case "-SPOOFERIPSREPLY":
+                            case "/SPOOFERIPSREPLY":
+                                argSpooferIPsReply = args[entry.index + 1].ToUpper().Split(',');
+                                break;
+
+                            case "-SPOOFERMACSIGNORE":
+                            case "/SPOOFERMACSIGNORE":
+                                argSpooferMACsIgnore = args[entry.index + 1].ToUpper().Replace(":", "").Replace("-", "").Split(',');
+                                break;
+
+                            case "-SPOOFERMACSREPLY":
+                            case "/SPOOFERMACSREPLY":
+                                argSpooferMACsReply = args[entry.index + 1].ToUpper().Replace(":", "").Replace("-", "").Split(',');
+                                break;
+
+                            case "-SPOOFERREPEAT":
+                            case "/SPOOFERREPEAT":
+                                argSpooferRepeat = args[entry.index + 1].ToUpper();
+                                break;
+
+                            case "-WPADAUTH":
+                            case "/WPADAUTH":
+                                argWPADAuth = args[entry.index + 1].ToUpper();
+                                break;
+
+                            case "-WPADAUTHIGNORE":
+                            case "/WPADAUTHIGNORE":
+                                argWPADAuthIgnore = args[entry.index + 1].Split(',');
+                                break;
+
+                            case "-WPADDNSDOMAINISHOSTSDIRECT":
+                            case "/WPADDNSDOMAINISHOSTSDIRECT":
+                                argWPADdnsDomainIsHostsDirect = args[entry.index + 1].Split(',');
+                                break;
+
+                            case "-WPADSHEXPMATCHHOSTSDIRECT":
+                            case "/WPADSHEXPMATCHHOSTSDIRECT":
+                                argWPADshExpMatchHostsDirect = args[entry.index + 1].Split(',');
+                                break;
+
+                            case "-WPADSHEXPMATCHURLSDIRECT":
+                            case "/WPADSHEXPMATCHURLSDIRECT":
+                                argWPADshExpMatchURLsDirect = args[entry.index + 1].Split(',');
+                                break;
+
+                            case "-WPADDNSDOMAINISHOSTSPROXY":
+                            case "/WPADDNSDOMAINISHOSTSPROXY":
+                                argWPADdnsDomainIsHostsProxy = args[entry.index + 1].Split(',');
+                                break;
+
+                            case "-WPADSHEXPMATCHHOSTSPROXY":
+                            case "/WPADSHEXPMATCHHOSTSPROXY":
+                                argWPADshExpMatchHostsProxy = args[entry.index + 1].Split(',');
+                                break;
+
+                            case "-WPADSHEXPMATCHURLSPROXY":
+                            case "/WPADSHEXPMATCHURLSPROXY":
+                                argWPADshExpMatchURLsProxy = args[entry.index + 1].Split(',');
+                                break;
+
+                            case "-WPADIP":
+                            case "/WPADIP":
+                                argWPADIP = args[entry.index + 1];
+                                break;
+
+                            case "-WPADPORT":
+                            case "/WPADPORT":
+                                argWPADPort = args[entry.index + 1];
+                                break;
+
+                            case "-WPADRESPONSE":
+                            case "/WPADRESPONSE":
+                                argWPADResponse = args[entry.index + 1];
+                                break;
+
+                            case "-?":
+                            case "/?":
+                                if (args.Length > 1)
+                                    argHelp = args[entry.index + 1].ToUpper();
+                                Util.GetHelp(argHelp);
+                                Environment.Exit(0);
+                                break;
+
+                            default:
+                                if (arg.StartsWith("-") || arg.StartsWith("/"))
+                                    throw new ArgumentException(paramName: arg, message: "Invalid Parameter");
+                                break;
+                        }
+
+                    }
+                    catch (Exception ex)
+                    {
+
+                        if (ex.Message.Contains("Index was outside the bounds of the array"))
+                        {
+                            Console.WriteLine("{0} is missing a value", arg);
+                        }
+                        else
+                        {
+                            Console.WriteLine("{0} error - {1}", arg, ex.Message);
+                        }
+
+                        Environment.Exit(0);
                     }
 
-                }
+                }          
+
             }
+
+            string[] ynArguments = { nameof(argConsoleUnique), nameof(argDHCPv6), nameof(argDHCPv6Local), nameof(argDNS), nameof(argFileOutput), nameof(argFileUnique), nameof(argHTTP), nameof(argLLMNR), nameof(argLLMNRv6), nameof(argLogOutput), nameof(argMachineAccounts), nameof(argMDNS), nameof(argNBNS), nameof(argPcap), nameof(argProxy), nameof(argSMB) };
+            string[] ynArgumentValues = { argConsoleUnique, argDHCPv6, argDHCPv6Local, argDNS, argFileOutput, argFileUnique, argHTTP, argLLMNR, argLLMNRv6, argLogOutput, argMachineAccounts, argMDNS, argNBNS, argPcap, argProxy, argSMB };
+            Util.ValidateStringArguments(ynArguments, ynArgumentValues, new string[] { "Y", "N" } );
+            Util.ValidateStringArguments(new string[] { nameof(argConsole) }, new string[] { argConsole }, new string[] { "0", "1", "2" });
+            string[] authArguments = { nameof(argHTTPAuth), nameof(argProxyAuth), nameof(argWPADAuth) };
+            string[] authArgumentValues = { argHTTPAuth, argProxyAuth, argWPADAuth };
+            Util.ValidateStringArguments(authArguments, new string[] { argHTTPAuth, argWPADAuth }, new string[] { "ANONYMOUS", "BASIC", "NTLM", "NTLMNOESS" });    
+            Util.ValidateStringArrayArguments(nameof(argDNSTypes), argDNSTypes, new string[] { "A", "SOA", "SRV" });
+            Util.ValidateStringArrayArguments(nameof(argNBNSTypes), argNBNSTypes, new string[] { "00", "03", "20", "1B", "1C", "1D", "1E" });
+            Util.ValidateStringArrayArguments(nameof(argMDNSQuestions), argMDNSQuestions, new string[] { "QM", "QU" });
+            string[] intArguments = { nameof(argConsole), nameof(argConsoleQueueLimit), nameof(argConsoleStatus), nameof(argDHCPv6RA), nameof(argDNSTTL), nameof(argHTTPPort), nameof(argLLMNRTTL), nameof(argMDNSTTL), nameof(argNBNSTTL), nameof(argProxyPort), nameof(argRunCount), nameof(argRunTime), nameof(argWPADPort) };
+            string[] intArgumentValues = { argConsole, argConsoleQueueLimit, argConsoleStatus, argDHCPv6RA, argDNSTTL, argHTTPPort, argLLMNRTTL, argMDNSTTL, argNBNSTTL, argProxyPort, argRunCount, argRunTime, argWPADPort };
+            Util.ValidateIntArguments(intArguments, intArgumentValues);
+            string[] ipAddressArguments = { nameof(argIP), nameof(argIPv6), nameof(argHTTPIP), nameof(argProxyIP), nameof(argSpooferIP), nameof(argSpooferIPv6), nameof(argWPADIP) };
+            string[] ipAddressArgumentValues = { argIP, argIPv6, argHTTPIP, argProxyIP, argSpooferIP, argSpooferIPv6, argWPADIP};
+            Util.ValidateIPAddressArguments(ipAddressArguments, ipAddressArgumentValues);
 
             Regex r = new Regex("^[A-Fa-f0-9]{16}$"); if (!String.IsNullOrEmpty(argChallenge) && !r.IsMatch(argChallenge)) { throw new ArgumentException("Challenge is invalid"); }
             r = new Regex("^[A-Fa-f0-9]{12}$"); if (!String.IsNullOrEmpty(argMAC) && !r.IsMatch(argMAC)) { throw new ArgumentException("MAC address is invalid"); }
-            try { consoleQueueLimit = Int32.Parse(argConsoleQueueLimit); } catch { throw new ArgumentException("ConsoleQueueLimit value must be a integer"); }
-            try { consoleStatus = Int32.Parse(argConsoleStatus); } catch { throw new ArgumentException("ConsoleStatus value must be a integer"); }
-            if (!String.Equals(argConsoleUnique, "Y") && !String.Equals(argConsoleUnique, "N")) throw new ArgumentException("ConsoleUnique value must be Y or N");
-            if (!String.Equals(argDNS, "Y") && !String.Equals(argDNS, "N")) throw new ArgumentException("DNS value must be Y or N");
-            try { Int32.Parse(argDNSTTL); } catch { throw new ArgumentException("DNSTTL value must be a integer"); }
-            if (argDNSTypes != null && argDNSTypes.Length > 0) { foreach (string type in argDNSTypes) { if (!String.Equals(type, "A") && !String.Equals(type, "SOA") && !String.Equals(type, "SRV")) { throw new ArgumentException("DNSTypes valid values are A, SOA, and SRV"); } } }
             if ((argDNSTypes.Contains("SOA") || argDNSTypes.Contains("SRV")) && argDNSHost.Split('.').Count() < 3) throw new ArgumentException("DNSHost must be specified and fully qualified when using DNSTypes SOA or SRV");
-            if (!String.Equals(argDHCPv6, "Y") && !String.Equals(argDHCPv6, "N")) throw new ArgumentException("DHCPv6 value must be Y or N");
-            if (!String.Equals(argDHCPv6Local, "Y") && !String.Equals(argDHCPv6Local, "N")) throw new ArgumentException("DHCPv6Local value must be Y or N");
-            try { dhcpv6RA = Int32.Parse(argDHCPv6RA); } catch { throw new ArgumentException("DHCPv6RA value must be a integer"); }
-            if (!String.Equals(argFileOutput, "Y") && !String.Equals(argFileOutput, "N")) throw new ArgumentException("FileOutput value must be Y or N");
-            if (String.Equals(argFileOutput, "Y") && !System.IO.Directory.Exists(argFileOutputDirectory)) { throw new ArgumentException("FileOutputDirectory is invalid"); }
-            if (!String.Equals(argFileUnique, "Y") && !String.Equals(argFileUnique, "N")) throw new ArgumentException("FileUnique value must be Y or N");
-            if (!String.Equals(argHTTP, "Y") && !String.Equals(argHTTP, "N")) throw new ArgumentException("HTTP value must be Y or N");
-            try { IPAddress.Parse(argHTTPIP); } catch { throw new ArgumentException("HTTPIP value must be an IP address"); }
-            try { Int32.Parse(argHTTPPort); } catch { throw new ArgumentException("HTTPPort value must be a integer"); }
-            if (!String.IsNullOrEmpty(argIP)) { try { IPAddress.Parse(argIP); } catch { throw new ArgumentException("IP value must be an IP address"); } }
-            if (!String.IsNullOrEmpty(argIPv6)) { try { IPAddress.Parse(argIPv6); } catch { throw new ArgumentException("IPv6 value must be an IPv6 address"); } }
-            if (!String.Equals(argHTTPAuth, "ANONYMOUS") && !String.Equals(argHTTPAuth, "BASIC") && !String.Equals(argHTTPAuth, "NTLM") && !String.Equals(argHTTPAuth, "NTLMNOESS")) throw new ArgumentException("HTTPAuth value must be Anonymous, Basic, NTLM, or NTLMNoESS");
-            if (!String.Equals(argLLMNR, "Y") && !String.Equals(argLLMNR, "N")) throw new ArgumentException("LLMNR value must be Y or N");
-            try { Int32.Parse(argLLMNRTTL); } catch { throw new ArgumentException("LLMNRTTL value must be a integer"); }
-            if (!String.Equals(argLLMNRv6, "Y") && !String.Equals(argLLMNRv6, "N")) throw new ArgumentException("LLMNRv6 value must be Y or N");
-            if (!String.Equals(argLogOutput, "Y") && !String.Equals(argLogOutput, "N")) throw new ArgumentException("LogOutput value must be Y or N");
-            if (!String.Equals(argMachineAccounts, "Y") && !String.Equals(argMachineAccounts, "N")) throw new ArgumentException("MachineAccounts value must be Y or N");
-            if (!String.Equals(argMDNS, "Y") && !String.Equals(argMDNS, "N")) throw new ArgumentException("mDNS value must be Y or N");
-            try { Int32.Parse(argMDNSTTL); } catch { throw new ArgumentException("mDNSTTL value must be a integer"); }
-            if (argMDNSQuestions != null && argMDNSQuestions.Length > 0) { foreach (string type in argMDNSQuestions) { if (!String.Equals(type, "QM") && !String.Equals(type, "QU")) { throw new ArgumentException("MDNSQuestions valid values are QM and QU"); } } }
-            if (!String.Equals(argNBNS, "Y") && !String.Equals(argNBNS, "N")) throw new ArgumentException("NBNS value must be Y or N");
-            try { Int32.Parse(argNBNSTTL); } catch { throw new ArgumentException("NBNSTTL value must be a integer"); }
-            if (argNBNSTypes != null && argNBNSTypes.Length > 0) { foreach (string type in argNBNSTypes) { if (!String.Equals(type, "00") && !String.Equals(type, "03") && !String.Equals(type, "20") && !String.Equals(type, "1B") && !String.Equals(type, "1C") && !String.Equals(type, "1D") && !String.Equals(type, "1E")) { throw new ArgumentException("NBNSTypes valid values are 00, 03, 20, 1B, 1C, 1D, and 1E"); }}}
-            if (!String.Equals(argPcap, "Y") && !String.Equals(argPcap, "N")) throw new ArgumentException("Pcap value must be Y or N");
+            if (String.Equals(argFileOutput, "Y") && !Directory.Exists(argFileOutputDirectory)) { throw new ArgumentException("FileOutputDirectory is invalid"); }
             if (argPcapTCP != null && argPcapTCP.Length > 0) { foreach (string port in argPcapTCP) { if (!String.Equals(port, "ALL")) { try { Int32.Parse(port); } catch { throw new ArgumentException("PcapPortTCP values must be an integer"); } } } }
             if (argPcapUDP != null && argPcapUDP.Length > 0) { foreach (string port in argPcapUDP) { if (!String.Equals(port, "ALL")) { try { Int32.Parse(port); } catch { throw new ArgumentException("PcapPortUDP values must be an integer"); } } } }
-            if (!String.Equals(argProxy, "Y") && !String.Equals(argProxy, "N")) throw new ArgumentException("Proxy value must be Y or N");
-            if (!String.Equals(argProxyAuth, "BASIC") && !String.Equals(argProxyAuth, "NTLM") && !String.Equals(argProxyAuth, "NTLMNOESS")) throw new ArgumentException("ProxyAuth value must be Basic, NTLM, or NTLMNoESS");
-            try { IPAddress.Parse(argProxyIP); } catch { throw new ArgumentException("ProxyIP value must be an IP address"); }
-            try { Int32.Parse(argProxyPort); } catch { throw new ArgumentException("ProxyPort value must be a integer"); }
-            try { runCount = Int32.Parse(argRunCount); } catch { throw new ArgumentException("RunCount value must be a integer"); }
-            try { runTime = Int32.Parse(argRunTime); } catch { throw new ArgumentException("RunTime value must be a integer"); }
-            if (!String.Equals(argSMB, "Y") && !String.Equals(argSMB, "N")) throw new ArgumentException("SMB value must be Y or N");
-            if (!String.IsNullOrEmpty(argSpooferIP)) { try { IPAddress.Parse(argSpooferIP); } catch { throw new ArgumentException("SpooferIP value must be an IP address"); } }
-            if (!String.IsNullOrEmpty(argSpooferIPv6)) { try { IPAddress.Parse(argSpooferIPv6); } catch { throw new ArgumentException("SpooferIP value must be an IP address"); } }
-            if (!String.Equals(argProxyAuth, "BASIC") && !String.Equals(argWPADAuth, "NTLM") && !String.Equals(argWPADAuth, "NTLMNOESS") && !String.Equals(argWPADAuth, "ANONYMOUS")) throw new ArgumentException("WPADAuth value must be Anonymous, Basic, NTLM, or NTLMNoESS");
-            if (!String.IsNullOrEmpty(argWPADIP)) { try { IPAddress.Parse(argWPADIP); } catch { throw new ArgumentException("WPADIP value must be an IP address"); } }
-            if (!String.IsNullOrEmpty(argWPADPort)) { try { Int32.Parse(argWPADPort); } catch { throw new ArgumentException("WPADPort value must be an integer"); } }
+            console = Int32.Parse(argConsole);
+            consoleQueueLimit = Int32.Parse(argConsoleQueueLimit);
+            consoleStatus = Int32.Parse(argConsoleStatus);
+            dhcpv6RA = Int32.Parse(argDHCPv6RA);
+            runCount = Int32.Parse(argRunCount);
+            runTime = Int32.Parse(argRunTime);
             if (String.Equals(argConsoleUnique, "Y")) { enabledConsoleUnique = true; }
             if (String.Equals(argElevated, "Y")) { enabledElevated = true; }
             if (String.Equals(argFileOutput, "Y")) { enabledFileOutput = true; }
@@ -563,7 +617,6 @@ namespace Inveigh
             if (String.Equals(argDHCPv6Local, "Y")) { enabledDHCPv6Local = true; }
             if (String.Equals(argDNS, "Y")) { enabledDNS = true; }
             if (String.Equals(argHTTP, "Y")) { enabledHTTP = true; }
-            if (argInspect) { enabledInspect = true; }
             if (String.Equals(argLLMNR, "Y")) { enabledLLMNR = true; }
             if (String.Equals(argLLMNRv6, "Y")) { enabledLLMNRv6 = true; }
             if (String.Equals(argLogOutput, "Y")) { enabledLogOutput = true; }
@@ -575,10 +628,10 @@ namespace Inveigh
             if (String.Equals(argSMB, "Y")) { enabledSMB = true; }
             if (String.Equals(argSpooferRepeat, "Y")) { enabledSpooferRepeat = true; }
 
-            if (enabledLogOutput && System.IO.File.Exists(Path.Combine(argFileOutputDirectory, String.Concat(argFilePrefix, "-Log.txt"))))
+            if (enabledLogOutput && File.Exists(Path.Combine(argFileOutputDirectory, String.Concat(argFilePrefix, "-Log.txt"))))
             {
                 isSession = true;
-                string[] file = System.IO.File.ReadAllLines(Path.Combine(argFileOutputDirectory, String.Concat(argFilePrefix, "-Log.txt")));
+                string[] file = File.ReadAllLines(Path.Combine(argFileOutputDirectory, String.Concat(argFilePrefix, "-Log.txt")));
 
                 foreach (string line in file)
                 {
@@ -587,10 +640,10 @@ namespace Inveigh
 
             }
 
-            if (System.IO.File.Exists(Path.Combine(argFileOutputDirectory, String.Concat(argFilePrefix, "-Cleartext.txt"))))
+            if (File.Exists(Path.Combine(argFileOutputDirectory, String.Concat(argFilePrefix, "-Cleartext.txt"))))
             {
                 isSession = true;
-                string[] file = System.IO.File.ReadAllLines(Path.Combine(argFileOutputDirectory, String.Concat(argFilePrefix, "-Cleartext.txt")));
+                string[] file = File.ReadAllLines(Path.Combine(argFileOutputDirectory, String.Concat(argFilePrefix, "-Cleartext.txt")));
 
                 foreach (string line in file)
                 {
@@ -599,10 +652,10 @@ namespace Inveigh
 
             }
 
-            if (System.IO.File.Exists(Path.Combine(argFileOutputDirectory, String.Concat(argFilePrefix, "-NTLMv1.txt"))))
+            if (File.Exists(Path.Combine(argFileOutputDirectory, String.Concat(argFilePrefix, "-NTLMv1.txt"))))
             {
                 isSession = true;
-                string[] file = System.IO.File.ReadAllLines(Path.Combine(argFileOutputDirectory, String.Concat(argFilePrefix, "-NTLMv1.txt")));
+                string[] file = File.ReadAllLines(Path.Combine(argFileOutputDirectory, String.Concat(argFilePrefix, "-NTLMv1.txt")));
 
                 foreach (string line in file)
                 {
@@ -611,10 +664,10 @@ namespace Inveigh
 
             }
 
-            if (System.IO.File.Exists(Path.Combine(argFileOutputDirectory, String.Concat(argFilePrefix, "-NTLMv2.txt"))))
+            if (File.Exists(Path.Combine(argFileOutputDirectory, String.Concat(argFilePrefix, "-NTLMv2.txt"))))
             {
                 isSession = true;
-                string[] file = System.IO.File.ReadAllLines(Path.Combine(argFileOutputDirectory, String.Concat(argFilePrefix, "-NTLMv2.txt")));
+                string[] file = File.ReadAllLines(Path.Combine(argFileOutputDirectory, String.Concat(argFilePrefix, "-NTLMv2.txt")));
 
                 foreach (string line in file)
                 {
@@ -623,10 +676,10 @@ namespace Inveigh
 
             }
 
-            if (System.IO.File.Exists(Path.Combine(argFileOutputDirectory, String.Concat(argFilePrefix, "-NTLMv1Users.txt"))))
+            if (File.Exists(Path.Combine(argFileOutputDirectory, String.Concat(argFilePrefix, "-NTLMv1Users.txt"))))
             {
                 isSession = true;
-                string[] file = System.IO.File.ReadAllLines(Path.Combine(argFileOutputDirectory, String.Concat(argFilePrefix, "-NTLMv1Users.txt")));
+                string[] file = File.ReadAllLines(Path.Combine(argFileOutputDirectory, String.Concat(argFilePrefix, "-NTLMv1Users.txt")));
 
                 foreach (string line in file)
                 {
@@ -635,10 +688,10 @@ namespace Inveigh
 
             }
 
-            if (System.IO.File.Exists(Path.Combine(argFileOutputDirectory, String.Concat(argFilePrefix, "-NTLMv2Users.txt"))))
+            if (File.Exists(Path.Combine(argFileOutputDirectory, String.Concat(argFilePrefix, "-NTLMv2Users.txt"))))
             {
                 isSession = true;
-                string[] file = System.IO.File.ReadAllLines(Path.Combine(argFileOutputDirectory, String.Concat(argFilePrefix, "-NTLMv2Users.txt")));
+                string[] file = File.ReadAllLines(Path.Combine(argFileOutputDirectory, String.Concat(argFilePrefix, "-NTLMv2Users.txt")));
 
                 foreach (string line in file)
                 {
@@ -647,10 +700,10 @@ namespace Inveigh
 
             }
 
-            if (System.IO.File.Exists(Path.Combine(argFileOutputDirectory, String.Concat(argFilePrefix, "-DHCPv6.txt"))))
+            if (File.Exists(Path.Combine(argFileOutputDirectory, String.Concat(argFilePrefix, "-DHCPv6.txt"))))
             {
                 isSession = true;
-                string[] file = System.IO.File.ReadAllLines(Path.Combine(argFileOutputDirectory, String.Concat(argFilePrefix, "-DHCPv6.txt")));
+                string[] file = File.ReadAllLines(Path.Combine(argFileOutputDirectory, String.Concat(argFilePrefix, "-DHCPv6.txt")));
 
                 foreach (string line in file)
                 {
@@ -693,18 +746,36 @@ namespace Inveigh
                 argSpooferIPv6 = argIPv6;
             }
 
+            //todo add IPv6 checks
+            if (!String.IsNullOrEmpty(argIPv6))
+            {
+                ipAddress = IPAddress.Parse(argIP);
+                ipv6Address = IPAddress.Parse(argIPv6);
+                spooferIPData = IPAddress.Parse(argSpooferIP).GetAddressBytes();
+                spooferIPv6Data = IPAddress.Parse(argSpooferIPv6).GetAddressBytes();
+
+                int i = 0;
+
+                if (!String.IsNullOrEmpty(argMAC))
+                {
+
+                    foreach (string character in argMAC.Split(':'))
+                    {
+                        macData[i] = Convert.ToByte(Convert.ToInt16(character, 16));
+                        i++;
+                    }
+
+                }
+
+            }
+
             if (!enabledElevated)
             {
                 enabledPcap = false;
                 enabledSMB = false;
             }
 
-            if (!enabledElevated && !isArgNBNS)
-            {
-                enabledNBNS = true;
-            }
-
-            if (argInspect)
+            if (enabledInspect)
             {
 
                 if (enabledElevated)
@@ -721,36 +792,112 @@ namespace Inveigh
 
             }
 
-            if (argWPADDirectHosts != null && argWPADDirectHosts.Length > 0)
+            if (argWPADdnsDomainIsHostsDirect != null && argWPADdnsDomainIsHostsDirect.Length > 0)
             {
                 int i = 0;
 
-                foreach (string host in argWPADDirectHosts)
+                foreach (string host in argWPADdnsDomainIsHostsDirect)
                 {
-                    argWPADDirectHosts[i] = String.Concat("if (dnsDomainIs(host, \"", host, "\")) return \"DIRECT\";");
+                    argWPADdnsDomainIsHostsDirect[i] = String.Concat("dnsDomainIs(host, \"", host, "\") || ");
                     i++;
                 }
 
-                wpadDirectHosts = String.Join("", argWPADDirectHosts);
+                wpadDNSDomainIsHostsDirect = String.Join("", argWPADdnsDomainIsHostsDirect);
+                wpadDNSDomainIsHostsDirect = wpadDNSDomainIsHostsDirect.Substring(0, wpadDNSDomainIsHostsDirect.Length - 4);
+                wpadDNSDomainIsHostsDirect = String.Concat("if (", wpadDNSDomainIsHostsDirect, ") return \"DIRECT\";");
+            }
+
+            if (argWPADshExpMatchHostsDirect != null && argWPADshExpMatchHostsDirect.Length > 0)
+            {
+                int i = 0;
+
+                foreach (string host in argWPADshExpMatchHostsDirect)
+                {
+                    argWPADshExpMatchHostsDirect[i] = String.Concat("shExpMatch(host, \"", host, "\") || ");
+                    i++;
+                }
+
+                wpadSHExpMatchHostsDirect = String.Join("", argWPADshExpMatchHostsDirect);
+                wpadSHExpMatchHostsDirect = wpadSHExpMatchHostsDirect.Substring(0, wpadSHExpMatchHostsDirect.Length - 4);
+                wpadSHExpMatchHostsDirect = String.Concat("if (", wpadSHExpMatchHostsDirect, ") return \"DIRECT\";");
+            }
+
+            if (argWPADshExpMatchURLsDirect != null && argWPADshExpMatchURLsDirect.Length > 0)
+            {
+                int i = 0;
+
+                foreach (string url in argWPADshExpMatchURLsDirect)
+                {
+                    argWPADshExpMatchURLsDirect[i] = String.Concat("shExpMatch(url, \"", url, "\") || ");
+                    i++;
+                }
+
+                wpadSHExpMatchURLsDirect = String.Join("", argWPADshExpMatchURLsDirect);
+                wpadSHExpMatchURLsDirect = wpadSHExpMatchURLsDirect.Substring(0, wpadSHExpMatchURLsDirect.Length - 4);
+                wpadSHExpMatchURLsDirect = String.Concat("if (", wpadSHExpMatchURLsDirect, ") return \"DIRECT\";");
+            }
+
+            if (argWPADdnsDomainIsHostsProxy != null && argWPADdnsDomainIsHostsProxy.Length > 0)
+            {
+                int i = 0;
+
+                foreach (string host in argWPADdnsDomainIsHostsProxy)
+                {
+                    argWPADdnsDomainIsHostsProxy[i] = String.Concat("dnsDomainIs(host, \"", host, "\") || ");
+                    i++;
+                }
+
+                wpadDNSDomainIsHostsProxy = String.Join("", argWPADdnsDomainIsHostsProxy);
+                wpadDNSDomainIsHostsProxy = wpadDNSDomainIsHostsProxy.Substring(0, wpadDNSDomainIsHostsProxy.Length - 4);
+                wpadDNSDomainIsHostsProxy = String.Concat("if (", wpadDNSDomainIsHostsProxy, ") ");
+            }
+
+            if (argWPADshExpMatchHostsProxy != null && argWPADshExpMatchHostsProxy.Length > 0)
+            {
+                int i = 0;
+
+                foreach (string host in argWPADshExpMatchHostsProxy)
+                {
+                    argWPADshExpMatchHostsProxy[i] = String.Concat("shExpMatch(host, \"", host, "\") || ");
+                    i++;
+                }
+
+                wpadSHExpMatchHostsProxy = String.Join("", argWPADshExpMatchHostsProxy);
+                wpadSHExpMatchHostsProxy = wpadSHExpMatchHostsProxy.Substring(0, wpadSHExpMatchHostsProxy.Length - 4);
+                wpadSHExpMatchHostsProxy = String.Concat("if (", wpadSHExpMatchHostsProxy, ") ");
+            }
+
+            if (argWPADshExpMatchURLsProxy != null && argWPADshExpMatchURLsProxy.Length > 0)
+            {
+                int i = 0;
+
+                foreach (string url in argWPADshExpMatchURLsProxy)
+                {
+                    argWPADshExpMatchURLsProxy[i] = String.Concat("shExpMatch(url, \"", url, "\") || ");
+                    i++;
+                }
+
+                wpadSHExpMatchURLsProxy = String.Join("", argWPADshExpMatchURLsProxy);
+                wpadSHExpMatchURLsProxy = wpadSHExpMatchURLsProxy.Substring(0, wpadSHExpMatchURLsProxy.Length - 4);
+                wpadSHExpMatchURLsProxy = String.Concat("if (", wpadSHExpMatchURLsProxy, ") ");
             }
 
             if (enabledProxy)
             {
                 argProxyPortFailover = (Int32.Parse(argProxyPort) + 1).ToString();
-                argWPADResponse = String.Concat("function FindProxyForURL(url,host){", wpadDirectHosts, "return \"PROXY ", argIP, ":", argProxyPort, "; PROXY ", argIP, ":", argProxyPortFailover, "; DIRECT\";}");
+                argWPADResponse = String.Concat("function FindProxyForURL(url,host){", wpadDNSDomainIsHostsDirect, argWPADshExpMatchHostsDirect, argWPADshExpMatchURLsDirect, wpadDNSDomainIsHostsProxy, wpadSHExpMatchHostsProxy, wpadSHExpMatchURLsProxy, "return \"PROXY ", argIP, ":", argProxyPort, "; PROXY ", argIP, ":", argProxyPortFailover, "; DIRECT\";}");
             }
             else if (!String.IsNullOrEmpty(argWPADIP) && !String.IsNullOrEmpty(argWPADPort))
             {
-                argWPADResponse = String.Concat("function FindProxyForURL(url,host) {", wpadDirectHosts, "return \"PROXY", argWPADIP, ":", argWPADPort, "; DIRECT\";}");
+               argWPADResponse = String.Concat("function FindProxyForURL(url,host) {", wpadDNSDomainIsHostsDirect, argWPADshExpMatchHostsDirect, argWPADshExpMatchURLsDirect, "return \"PROXY", argWPADIP, ":", argWPADPort, "; DIRECT\";}");
             }
 
-            string version = "0.913";
             string optionStatus = "";
             outputList.Add(String.Format("[*] Inveigh {0} started at {1}", version, DateTime.Now.ToString("s")));
             if (enabledElevated) optionStatus = "Enabled";
             else optionStatus = "Disabled";
             outputList.Add(String.Format("[+] Elevated Privilege Mode = {0}", optionStatus));
-            if (argInspect) { outputList.Add("[+] Inspect Only Mode = Enabled"); }
+            if (enabledInspect) { outputList.Add("[+] Inspect Only Mode = Enabled"); }
             outputList.Add(String.Format("[+] Primary IP Address = {0}", argIP));
             if (!String.IsNullOrEmpty(argIPv6)) outputList.Add(String.Format("[+] Primary IPv6 Address = {0}", argIPv6));
             outputList.Add(String.Format("[+] Spoofer IP Address = {0}", argSpooferIP));
@@ -786,7 +933,6 @@ namespace Inveigh
             {
                 outputList.Add(String.Format("[+] DNS Spoofer For Types {0} = Enabled", String.Join(",", argDNSTypes)));
                 if (!String.IsNullOrEmpty(argDNSHost)) { outputList.Add(String.Format("[+] DNS Host = {0}", argDNSHost)); }
-                outputList.Add(String.Format("[+] DNS TTL = {0}", argDNSTTL));  
             }
             else outputList.Add(String.Format("[+] DNS Spoofer = Disabled"));
 
@@ -796,19 +942,16 @@ namespace Inveigh
             if (enabledLLMNRv6) optionStatus = "Enabled";
             else optionStatus = "Disabled";
             outputList.Add(String.Format("[+] LLMNRv6 Spoofer = {0}", optionStatus));
-            if (enabledLLMNR || enabledLLMNRv6) { outputList.Add(String.Format("[+] LLMNR TTL = {0}", argLLMNRTTL)); }
 
             if (enabledMDNS)
             {
                 outputList.Add(String.Format("[+] mDNS({0}) Spoofer For Types {1} = Enabled", String.Join(",", argMDNSQuestions), String.Join(",", argMDNSTypes)));
-                outputList.Add(String.Format("[+] mDNS TTL = {0}", argMDNSTTL));
             }
             else outputList.Add(String.Format("[+] mDNS Spoofer = Disabled"));
 
             if (enabledNBNS)
             {
                 outputList.Add(String.Format("[+] NBNS Spoofer For Types {0} = Enabled", String.Join(",", argNBNSTypes)));
-                outputList.Add(String.Format("[+] NBNS TTL = {0}", argNBNSTTL));
             }
             else outputList.Add(String.Format("[+] NBNS Spoofer = Disabled"));
 
@@ -845,7 +988,7 @@ namespace Inveigh
 
             outputList.Add(String.Format("[+] WPAD Authentication = {0}", argWPADAuth));
             if (argWPADAuth.StartsWith("NTLM")) outputList.Add(String.Format("[+] WPAD NTLM Authentication Ignore List = {0}", String.Join(",", argWPADAuthIgnore)));
-            if (argWPADDirectHosts != null) outputList.Add(String.Format("[+] WPAD Direct Hosts = {0}", String.Join(",", argWPADDirectHosts)));
+            //if (argWPADDirectHosts != null) outputList.Add(String.Format("[+] WPAD Direct Hosts = {0}", String.Join(",", argWPADDirectHosts)));
             if (!String.IsNullOrEmpty(argWPADIP)) outputList.Add(String.Format("[+] WPAD IP = {0}", argWPADIP));
             if (!String.IsNullOrEmpty(argWPADPort)) outputList.Add(String.Format("[+] WPAD Port = {0}", argWPADPort));
             if (enabledSMB) optionStatus = "Enabled";
@@ -878,13 +1021,13 @@ namespace Inveigh
 
                 if (enabledElevated && (enabledDNS || enabledMDNS || enabledLLMNR || enabledNBNS || enabledSMB))
                 {
-                    Thread snifferSpooferThread = new Thread(() => Sniffer.SnifferSpoofer("IPv4", argIP, argMAC, argSpooferIP, argSpooferIPv6, argDNSHost, argDNSTTL, argLLMNRTTL, argMDNSTTL, argNBNSTTL, argDNSTypes, argMDNSQuestions, argMDNSTypes, argNBNSTypes, argDHCPv6DNSSuffix, argPcapTCP, argPcapUDP));
+                    Thread snifferSpooferThread = new Thread(() => Sniffer.SnifferSpoofer("IPv4", argIP));
                     snifferSpooferThread.Start();
                 }
 
                 if (!String.IsNullOrEmpty(argIPv6) && enabledElevated && (enabledDHCPv6 || enabledLLMNRv6))
                 {
-                    Thread snifferSpooferIPv6Thread = new Thread(() => Sniffer.SnifferSpoofer("IPv6", argIPv6, argMAC, argSpooferIP, argSpooferIPv6, argDNSHost, argDNSTTL, argLLMNRTTL, argMDNSTTL, argNBNSTTL, argDNSTypes, argMDNSQuestions, argMDNSTypes, argNBNSTypes, argDHCPv6DNSSuffix, argPcapTCP, argPcapUDP));
+                    Thread snifferSpooferIPv6Thread = new Thread(() => Sniffer.SnifferSpoofer("IPv6", argIPv6));
                     snifferSpooferIPv6Thread.Start();
                 }
 
@@ -900,36 +1043,36 @@ namespace Inveigh
 
                 if (enabledNBNS)
                 {
-                    Thread nbnsListenerThread = new Thread(() => NBNS.NBNSListener(argIP, argSpooferIP, argNBNSTTL, argNBNSTypes));
+                    Thread nbnsListenerThread = new Thread(() => NBNS.NBNSListener(argIP));
                     nbnsListenerThread.Start();
                 }
 
                 if (enabledLLMNR)
                 {
-                    Thread llmnrListenerThread = new Thread(() => LLMNR.LLMNRListener(argIP, argSpooferIP, argSpooferIPv6, argLLMNRTTL, "IPv4"));
+                    Thread llmnrListenerThread = new Thread(() => LLMNR.LLMNRListener("IPv4", argIP));
                     llmnrListenerThread.Start();
                 }
 
                 if (enabledMDNS)
                 {
-                    Thread mdnsListenerThread = new Thread(() => MDNS.MDNSListener("IPv4", argIP, argSpooferIP, argSpooferIPv6, argMDNSTTL, argMDNSQuestions, argMDNSTypes));
+                    Thread mdnsListenerThread = new Thread(() => MDNS.MDNSListener("IPv4", argIP));
                     mdnsListenerThread.Start();
                 }
 
                 if (enabledDHCPv6)
                 {
-                    Thread dnsListenerThread = new Thread(() => DHCPv6.DHCPv6Listener(argIPv6, argSpooferIPv6, argMAC, argDHCPv6DNSSuffix));
+                    Thread dnsListenerThread = new Thread(() => DHCPv6.DHCPv6Listener(argIPv6));
                     dnsListenerThread.Start();
                 }
 
                 if (enabledDNS)
                 {
-                    Thread dnsListenerThread = new Thread(() => DNS.DNSListener(argIP, argSpooferIP, argDNSTTL, argDNSHost, "IPv4", argDNSTypes));
+                    Thread dnsListenerThread = new Thread(() => DNS.DNSListener("IPv4", argIP));
                     dnsListenerThread.Start();
 
                     if(!String.IsNullOrEmpty(argIPv6))
                     {
-                        Thread dnsListenerIPv6Thread = new Thread(() => DNS.DNSListener(argIPv6, argSpooferIP, argDNSTTL, argDNSHost, "IPv6", argDNSTypes));
+                        Thread dnsListenerIPv6Thread = new Thread(() => DNS.DNSListener("IPv6", argIPv6));
                         dnsListenerIPv6Thread.Start();
                     }
                     
@@ -939,25 +1082,25 @@ namespace Inveigh
 
             if (enabledHTTP)
             {
-                Thread httpListenerThread = new Thread(() => HTTP.HTTPListener(argHTTPIP, argHTTPPort, "IPv4", argChallenge, computerName, dnsDomain, netbiosDomain, argHTTPBasicRealm, argHTTPAuth, argHTTPResponse, argWPADAuth, argWPADResponse, argWPADAuthIgnore, argProxyIgnore, false));
+                Thread httpListenerThread = new Thread(() => HTTP.HTTPListener("HTTP", "IPv4", argHTTPIP, argHTTPPort));
                 httpListenerThread.Start();
 
-                Thread httpListenerIPv6Thread = new Thread(() => HTTP.HTTPListener(argHTTPIP, argHTTPPort, "IPv6", argChallenge, computerName, dnsDomain, netbiosDomain, argHTTPBasicRealm, argHTTPAuth, argHTTPResponse, argWPADAuth, argWPADResponse, argWPADAuthIgnore, argProxyIgnore, false));
+                Thread httpListenerIPv6Thread = new Thread(() => HTTP.HTTPListener("HTTPv6", "IPv6", argHTTPIP, argHTTPPort));
                 httpListenerIPv6Thread.Start();
             }
 
             if (enabledProxy)
             {
-                Thread proxyListenerThread = new Thread(() => HTTP.HTTPListener(argProxyIP, argProxyPort, "IPv4", argChallenge, computerName, dnsDomain, netbiosDomain, argHTTPBasicRealm, argProxyAuth, argHTTPResponse, argWPADAuth, argWPADResponse, argWPADAuthIgnore, argProxyIgnore, true));
+                Thread proxyListenerThread = new Thread(() => HTTP.HTTPListener("Proxy", "IPv4", argProxyIP, argProxyPort));
                 proxyListenerThread.Start();
             }
 
-            Thread controlThread = new Thread(() => ControlLoop(consoleQueueLimit, consoleStatus, runCount, runTime));
+            Thread controlThread = new Thread(() => Control.ControlLoop(argConsole, consoleQueueLimit, consoleStatus, runCount, runTime));
             controlThread.Start();
 
             if (enabledFileOutput)
             {
-                Thread fileOutputThread = new Thread(() => FileOutput());
+                Thread fileOutputThread = new Thread(() => Control.FileOutput(argFileOutputDirectory, argFilePrefix));
                 fileOutputThread.Start();
             }
 
@@ -966,8 +1109,8 @@ namespace Inveigh
 
                 try
                 {
-                    OutputLoop();
-                    Console.WriteLine("");
+                    Control.OutputLoop();
+                    Console.WriteLine();
                     consoleOutput = false;
                     int x = Console.CursorLeft;
                     int y = Console.CursorTop;
@@ -991,7 +1134,7 @@ namespace Inveigh
 
                                 while (consoleList.Count > 0)
                                 {
-                                    ConsoleOutputFormat(consoleList[0]);
+                                    Control.ConsoleOutputFormat(consoleList[0]);
                                     consoleList.RemoveAt(0);
                                 }
 
@@ -1004,7 +1147,7 @@ namespace Inveigh
 
                             foreach (string entry in outputLog)
                             {
-                                ConsoleOutputFormat(entry);
+                                Control.ConsoleOutputFormat(entry);
                             }
                             break;
 
@@ -1064,7 +1207,7 @@ namespace Inveigh
                         case "?":
                         case "HELP":
                             Console.Clear();
-                            Console.WriteLine("");
+                            Console.WriteLine();
                             Console.WriteLine("==============================================================================================================");
                             Console.WriteLine(" Inveigh Console Commands");
                             Console.WriteLine("==============================================================================================================\n");
@@ -1090,7 +1233,7 @@ namespace Inveigh
 
                         case "STOP":
                             exitInveigh = true;
-                            StopInveigh();
+                            Control.StopInveigh();
                             break;
 
                         default:
@@ -1214,7 +1357,7 @@ namespace Inveigh
                             break;
                     }
 
-                    System.Threading.Thread.Sleep(5);
+                    Thread.Sleep(5);
                 }
                 catch (Exception ex)
                 {
@@ -1224,681 +1367,6 @@ namespace Inveigh
 
             }
 
-        }
-
-        static void FileOutput()
-        {
-
-            while (true)
-            {
-
-                if (logFileList.Count > 0)
-                {
-
-                    using (StreamWriter outputFileLog = new StreamWriter(Path.Combine(argFileOutputDirectory, String.Concat(argFilePrefix, "-Log.txt")), true))
-                    {
-                        outputFileLog.WriteLine(logFileList[0]);
-                        outputFileLog.Close();
-
-                        lock (logFileList)
-                        {
-                            logFileList.RemoveAt(0);
-                        }
-
-                    }
-
-                }
-
-                if (cleartextFileList.Count > 0)
-                {
-
-                    using (StreamWriter outputFileCleartext = new StreamWriter(Path.Combine(argFileOutputDirectory, String.Concat(argFilePrefix, "-Cleartext.txt")), true))
-                    {
-                        outputFileCleartext.WriteLine(cleartextFileList[0]);
-                        outputFileCleartext.Close();
-
-                        lock (cleartextFileList)
-                        {
-                            cleartextFileList.RemoveAt(0);
-                        }
-
-                    }
-
-                }
-
-                if (ntlmv1FileList.Count > 0)
-                {
-
-                    using (StreamWriter outputFileNTLMv1 = new StreamWriter(Path.Combine(argFileOutputDirectory, String.Concat(argFilePrefix, "-NTLMv1.txt")), true))
-                    {
-                        outputFileNTLMv1.WriteLine(ntlmv1FileList[0]);
-                        outputFileNTLMv1.Close();
-
-                        lock (ntlmv1FileList)
-                        {
-                            ntlmv1FileList.RemoveAt(0);
-                        }
-
-                    }
-
-                }
-
-                if (ntlmv2FileList.Count > 0)
-                {
-
-                    using (StreamWriter outputFileNTLMv2 = new StreamWriter(Path.Combine(argFileOutputDirectory, String.Concat(argFilePrefix, "-NTLMv2.txt")), true))
-                    {
-                        outputFileNTLMv2.WriteLine(ntlmv2FileList[0]);
-                        outputFileNTLMv2.Close();
-
-                        lock (ntlmv2FileList)
-                        {
-                            ntlmv2FileList.RemoveAt(0);
-                        }
-
-                    }
-
-                }
-
-                if (ntlmv1UsernameFileList.Count > 0)
-                {
-
-                    using (StreamWriter outputUsernameFileNTLMv1 = new StreamWriter(Path.Combine(argFileOutputDirectory, String.Concat(argFilePrefix, "-NTLMv1Users.txt")), true))
-                    {
-                        outputUsernameFileNTLMv1.WriteLine(ntlmv1UsernameFileList[0]);
-                        outputUsernameFileNTLMv1.Close();
-
-                        lock (ntlmv1UsernameList)
-                        {
-                            ntlmv1UsernameFileList.RemoveAt(0);
-                        }
-
-                    }
-
-                }
-
-                if (ntlmv2UsernameFileList.Count > 0)
-                {
-
-                    using (StreamWriter outputUsernameFileNTLMv2 = new StreamWriter(Path.Combine(argFileOutputDirectory, String.Concat(argFilePrefix, "-NTLMv2Users.txt")), true))
-                    {
-                        outputUsernameFileNTLMv2.WriteLine(ntlmv2UsernameFileList[0]);
-                        outputUsernameFileNTLMv2.Close();
-
-                        lock (ntlmv2UsernameFileList)
-                        {
-                            ntlmv2UsernameFileList.RemoveAt(0);
-                        }
-
-                    }
-
-                }
-
-                if (hostFileList.Count > 0)
-                {
-
-                    using (StreamWriter outputDHCPv6File = new StreamWriter(Path.Combine(argFileOutputDirectory, String.Concat(argFilePrefix, "-DHCPv6.txt")), true))
-                    {
-                        outputDHCPv6File.WriteLine(hostFileList[0]);
-                        outputDHCPv6File.Close();
-
-                        lock (hostFileList)
-                        {
-                            hostFileList.RemoveAt(0);
-                        }
-
-                    }
-
-                }
-
-                Thread.Sleep(100);
-            }
-
-        }
-
-        static void OutputLoop()
-        {
-            bool keyDetect = true;
-            bool keyPressed = false;
-
-            do
-            {
-
-                while (consoleOutput && !keyPressed)
-                {
-
-                    try
-                    {
-
-                        if (keyDetect && Console.KeyAvailable)
-                        {
-                            keyPressed = true;
-                        }
-
-                    }
-                    catch { keyDetect = false; }
-
-                    while (consoleList.Count > 0)
-                    {
-                        ConsoleOutputFormat(consoleList[0]);
-                        consoleList.RemoveAt(0);
-                    }
-
-                    System.Threading.Thread.Sleep(5);
-                }
-            } while (consoleOutput && Console.ReadKey(true).Key != ConsoleKey.Escape);
-
-        }
-
-        static void ConsoleOutputFormat(string consoleEntry)
-        {
-
-            if(String.IsNullOrEmpty(consoleEntry))
-            {
-                consoleEntry = "";
-            }
-
-            if (consoleEntry.StartsWith("[*]") || consoleEntry.Contains("captured") || consoleEntry.Contains("renewed to") || consoleEntry.Contains("leased to") || consoleEntry.Contains("advertised to") || 
-                consoleEntry.Contains("[not unique]") || consoleEntry.Contains("[redacted]") || (!consoleEntry.StartsWith("[+] ") && !consoleEntry.StartsWith("[*] ") && !consoleEntry.StartsWith("[!] ") && 
-                !consoleEntry.StartsWith("[-] ")) && !consoleEntry.Contains("[machine account]"))
-            {
-                Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine(consoleEntry);
-                Console.ResetColor();
-            }
-            else if (consoleEntry.StartsWith("[-]"))
-            {
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine(consoleEntry);
-                Console.ResetColor();
-            }
-            else if (consoleEntry.StartsWith("[!]") || consoleEntry.Contains(" ignored ") || consoleEntry.Contains("[machine account]"))
-            {
-                Console.ForegroundColor = ConsoleColor.Yellow;
-                Console.WriteLine(consoleEntry);
-                Console.ResetColor();
-            }
-            else if (consoleEntry.Contains("[response sent]") || consoleEntry.Contains("[advertised ") || consoleEntry.Contains("[assigned "))
-            {
-                int outputIndex = (consoleEntry.Substring(5)).IndexOf("[") + 6;
-                string outputStart = consoleEntry.Substring(0, outputIndex);
-                string outputEnd = consoleEntry.Substring(outputIndex).Replace("]", "");
-                Console.Write(outputStart);
-                Console.ForegroundColor = ConsoleColor.Green;
-                Console.Write(outputEnd);
-                Console.ResetColor();
-                Console.WriteLine("]");
-            }
-            else
-            {
-                Console.WriteLine(consoleEntry);
-            }
-
-        }
-
-        static void ControlLoop(int consoleQueueLimit, int consoleStatus, int runCount, int runTime)
-        {
-            Stopwatch stopwatchConsoleStatus = new Stopwatch();
-            stopwatchConsoleStatus.Start();
-            Stopwatch stopwatchRunTime = new Stopwatch();
-            stopwatchRunTime.Start();
-
-            while (true)
-            {
-
-                if (consoleStatus > 0 && consoleOutput && stopwatchConsoleStatus.Elapsed.Minutes >= consoleStatus)
-                {
-                    Util.GetCleartextUnique();
-                    Util.GetNTLMv1Unique();
-                    Util.GetNTLMv1Usernames();
-                    Util.GetNTLMv2Unique();
-                    Util.GetNTLMv2Usernames();
-                    stopwatchConsoleStatus.Reset();
-                    stopwatchConsoleStatus.Start();
-                }
-
-                if (runTime > 0 && consoleOutput && stopwatchRunTime.Elapsed.Minutes >= runTime)
-                {
-                    outputList.Add(String.Format("[*] {0} Inveigh is exiting due to reaching run time", DateTime.Now.ToString("s")));
-                    exitInveigh = true;
-                    StopInveigh();
-                }
-
-                if (runCount > 0 && consoleOutput && (ntlmv1List.Count >= runCount || ntlmv2List.Count >= runCount))
-                {
-                    outputList.Add(String.Format("[*] {0} Inveigh is exiting due to reaching run count", DateTime.Now.ToString("s")));
-                    exitInveigh = true;
-                    StopInveigh();
-                }
-
-                try
-                {
-
-                    while (outputList.Count > 0)
-                    {
-
-                        consoleList.Add(outputList[0]);
-
-                        if (enabledLogOutput)
-                        {
-                            logList.Add(outputList[0]);
-                        }
-
-                        if (outputList[0].StartsWith("[+] ") || outputList[0].StartsWith("[*] ") || outputList[0].StartsWith("[!] ") || outputList[0].StartsWith("[-] "))
-                        {
-                            logFileList.Add(outputList[0]);
-                        }
-                        else
-                        {
-                            logFileList.Add("[redacted]");
-                        }
-
-                        lock (outputList)
-                        {
-                            outputList.RemoveAt(0);
-                        }
-
-                    }
-
-                    if (!consoleOutput && consoleQueueLimit >= 0)
-                    {
-
-                        while (consoleList.Count > consoleQueueLimit && !consoleOutput)
-                        {
-                            consoleList.RemoveAt(0);
-                        }
-
-                    }
-
-                    if (exitInveigh && consoleOutput)
-                    {
-                        while (consoleList.Count > 0)
-                        {
-                            System.Threading.Thread.Sleep(5);
-                        }
-
-                        Environment.Exit(0);
-                    }
-
-                }
-                catch (Exception ex)
-                {
-                    Program.outputList.Add(String.Format("[-] [{0}] Output error detected - {1}", DateTime.Now.ToString("s"), ex.ToString()));
-                }
-
-                Thread.Sleep(5);
-            }
-
-        }
-
-        static void StopInveigh()
-        {
-
-            if (Sniffer.pcapFile != null)
-            {
-                Sniffer.pcapFile.Close();
-                Sniffer.pcapFile.Dispose();
-            }
-
-            Console.WriteLine(String.Format("[+] Inveigh exited at {0}", DateTime.Now.ToString("s")));
-            Environment.Exit(0);
-        }
-
-        static void GetHelp(string arg)
-        {
-            bool nullarg = true;
-
-            Console.WriteLine("");
-
-            if (String.IsNullOrEmpty(arg))
-            {
-                Console.WriteLine("args:\n");
-            }
-            else
-            {
-                Console.WriteLine("arg:\n");
-                nullarg = false;
-            }
-
-            if (nullarg || String.Equals(arg, "CHALLENGE"))
-            {
-                Console.WriteLine(" -Challenge               Default = Random: 16 character hex NTLM challenge for use with the HTTP listener.");
-                Console.WriteLine("                          If left blank, a random challenge will be generated for each request.");
-            }
-
-            if (nullarg || String.Equals(arg, "CONSOLESTATUS"))
-            {
-                Console.WriteLine(" -ConsoleStatus           Default = Disabled: Interval in minutes for displaying all unique captured usernames,");
-                Console.WriteLine("                          hashes, and credentials.");
-            }
-
-            if (nullarg || String.Equals(arg, "DHCPV6"))
-            {
-                Console.WriteLine(" -DHCPv6                  Default = Disabled: (Y/N) Enable/Disable DHCPv6 spoofing.");
-            }
-
-            if (nullarg || String.Equals(arg, "DHCPV6Local"))
-            {
-                Console.WriteLine(" -DHCPv6Local             Default = Disabled: (Y/N) Enable/Disable spoofing DHCPv6 packets from the Inveigh host.");
-            }
-
-            if (nullarg || String.Equals(arg, "DHCPV6DNSSUFFIX"))
-            {
-                Console.WriteLine(" -DHCPv6DNSSuffix         DNS search suffix to include in DHCPv6 responses.");
-            }
-
-            if (nullarg || String.Equals(arg, "DHCPV6RA"))
-            {
-                Console.WriteLine(" -DHCPv6RA                Default = 30 Seconds: DHCPv6 ICMPv6 router advertise interval. Set to 0 to disable.");
-            }
-
-            if (nullarg || String.Equals(arg, "DNS"))
-            {
-                Console.WriteLine(" -DNS                     Default = Enabled: (Y/N) Enable/Disable DNS spoofing.");
-            }
-
-            if (nullarg || String.Equals(arg, "DNSHOSTNAME"))
-            {
-                Console.WriteLine(" -DNSHost                 Fully qualified hostname to use SOA/SRV responses.");
-            }
-
-            if (nullarg || String.Equals(arg, "DNSTTL"))
-            {
-                Console.WriteLine(" -DNSTTL                  Default = 30 Seconds: DNS TTL in seconds for the response packet.");
-            }
-
-            if (nullarg || String.Equals(arg, "DNSTYPES"))
-            {
-                Console.WriteLine(" -DNSTypes                Default = A: Comma separated list of DNS types to spoof. Types include A, SOA, and SRV");
-            }
-
-            if (nullarg || String.Equals(arg, "ELEVATEDPRIVILEGE"))
-            {
-                Console.WriteLine(" -Elevated                Default = Y: (Y/N) Set the privilege mode. Elevated privilege features require an");
-                Console.WriteLine("                          elevated administrator shell.");
-            }
-
-            if (nullarg || String.Equals(arg, "FILEOUTPUT"))
-            {
-                Console.WriteLine(" -FileOutput              Default = Disabled: (Y/N) Enable/Disable real time file output.");
-            }
-
-            if (nullarg || String.Equals(arg, "FILEOUTPUTDIRECTORY"))
-            {
-                Console.WriteLine(" -FileOutputDirectory     Default = Working Directory: Valid path to an output directory for log and capture");
-                Console.WriteLine("                          files. FileOutput must also be enabled.");
-            }
-
-            if (nullarg || String.Equals(arg, "FILEPREFIX"))
-            {
-                Console.WriteLine(" -FilePrefix              Default = Inveigh: Prefix for all output files.");
-            }
-
-            if (nullarg || String.Equals(arg, "FILEUNIQUE"))
-            {
-                Console.WriteLine(" -FileUnique              Default = Enabled: (Y/N) Enable/Disable outputting challenge/response hashes for");
-                Console.WriteLine("                          only unique IP, domain/hostname, and username combinations when real time file");
-                Console.WriteLine("                          output is enabled.");
-            }
-
-            if (nullarg || String.Equals(arg, "HTTP"))
-            {
-                Console.WriteLine(" -HTTP                    Default = Enabled: (Y/N) Enable/Disable HTTP challenge/response capture.");
-            }
-
-            if (nullarg || String.Equals(arg, "HTTPAUTH"))
-            {
-                Console.WriteLine(" -HTTPAuth                Default = NTLM: (Anonymous/Basic/NTLM/NTLMNoESS) HTTP/HTTPS listener authentication");
-                Console.WriteLine("                          type. This setting does not apply to wpad.dat requests. NTLMNoESS turns off the");
-                Console.WriteLine("                          'Extended Session Security' flag during negotiation.");
-            }
-
-            if (nullarg || String.Equals(arg, "HTTPIP"))
-            {
-                Console.WriteLine(" -HTTPIP                  Default = Any: IP address for the HTTP/HTTPS listener.");
-            }
-
-            if (nullarg || String.Equals(arg, "HTTPPORT"))
-            {
-                Console.WriteLine(" -HTTPPort                Default = 80: TCP port for the HTTP listener.");
-            }
-
-            if (nullarg || String.Equals(arg, "HTTPRESPONSE"))
-            {
-                Console.WriteLine(" -HTTPResponse            Content to serve as the default HTTP/HTTPS/Proxy response. This response will not be");
-                Console.WriteLine("                          used for wpad.dat requests. This parameter will not be used if HTTPDir is set. Use C#");
-                Console.WriteLine("                          character escapes and newlines where necessary.");
-            }
-
-            if (nullarg || String.Equals(arg, "INSPECT"))
-            {
-                Console.WriteLine(" -Inspect                 (Switch) Inspect DNS/LLMNR/mDNS/NBNS/SMB traffic only.");
-            }
-
-            if (nullarg || String.Equals(arg, "IP"))
-            {
-                Console.WriteLine(" -IP                      Local IP address for listening and packet sniffing. This IP address will also be");
-                Console.WriteLine("                          used for spoofing if the SpooferIP arg is not set.");
-            }
-
-            if (nullarg || String.Equals(arg, "IPV6"))
-            {
-                Console.WriteLine(" -IPv6                    Local IPv6 address for listening and packet sniffing. This IP address will also be");
-                Console.WriteLine("                          used for spoofing if the SpooferIPv6 arg is not set.");
-            }
-
-            if (nullarg || String.Equals(arg, "LLMNR"))
-            {
-                Console.WriteLine(" -LLMNR                   Default = Enabled: (Y/N) Enable/Disable LLMNR spoofing.");
-            }
-
-            if (nullarg || String.Equals(arg, "LLMNRv6"))
-            {
-                Console.WriteLine(" -LLMNRv6                 Default = Disabled: (Y/N) Enable/Disable IPv6 LLMNR spoofing.");
-            }
-
-            if (nullarg || String.Equals(arg, "LLMNRTTL"))
-            {
-                Console.WriteLine(" -LLMNRTTL                Default = 30 Seconds: LLMNR TTL in seconds for the response packet.");
-            }
-
-            if (nullarg || String.Equals(arg, "MAC"))
-            {
-                Console.WriteLine(" -MAC                     Local MAC address for IPv6.");
-            }
-
-            if (nullarg || String.Equals(arg, "MACHINEACCOUNTS"))
-            {
-                Console.WriteLine(" -MachineAccounts         Default = Disabled: (Y/N) Enable/Disable showing NTLM challenge/response captures");
-                Console.WriteLine("                          from machine accounts.");
-            }
-
-            if (nullarg || String.Equals(arg, "MDNS"))
-            {
-                Console.WriteLine(" -mDNS                    Default = Disabled: (Y/N) Enable/Disable mDNS spoofing.");
-            }
-
-            if (nullarg || String.Equals(arg, "MDNSTTL"))
-            {
-                Console.WriteLine(" -mDNSTTL                 Default = 120 Seconds: mDNS TTL in seconds for the response packet.");
-            }
-
-            if (nullarg || String.Equals(arg, "MDNSQuestions"))
-            {
-                Console.WriteLine(" -mDNSQuestions           Default = QU,QM: Comma separated list of mDNS question types to spoof. Note that QM will");
-                Console.WriteLine("                          send the response to 224.0.0.251. Types include QU = Query Unicast, QM = Query Multicast");
-            }
-
-            if (nullarg || String.Equals(arg, "MDNSTYPES"))
-            {
-                Console.WriteLine(" -mDNSTypes               Default = A: Comma separated list of mDNS record types to spoof.");
-            }
-
-            if (nullarg || String.Equals(arg, "NBNS"))
-            {
-                Console.WriteLine(" -NBNS                    Default = Disabled: (Y/N) Enable/Disable NBNS spoofing.");
-            }
-
-            if (nullarg || String.Equals(arg, "NBNSTTL"))
-            {
-                Console.WriteLine(" -NBNSTTL                 Default = 165 Seconds: NBNS TTL in seconds for the response packet.");
-            }
-
-            if (nullarg || String.Equals(arg, "NBNSTYPES"))
-            {
-                Console.WriteLine(" -NBNSTypes               Default = 00,20: Comma separated list of NBNS types to spoof. Note, not all types have");
-                Console.WriteLine("                          been tested. Types include 00 = Workstation Service, 03 = Messenger Service, 20 = Server");
-                Console.WriteLine("                          Service, 1B = Domain Name");
-            }
-
-            if (nullarg || String.Equals(arg, "PCAP"))
-            {
-                Console.WriteLine(" -Pcap                    Default = Disabled: (Y/N) Enable/Disable IPv4 TCP/UDP pcap output.");
-            }
-
-            if (nullarg || String.Equals(arg, "PCAPPORTTCP"))
-            {
-                Console.WriteLine(" -PcapPortTCP             Default = 139,445: Comma separated list of TCP ports to filter which packets will be");
-                Console.WriteLine("                          written to the pcap file. Use 'All' to capture on all ports.");
-            }
-
-            if (nullarg || String.Equals(arg, "PCAPPORTUDP"))
-            {
-                Console.WriteLine(" -PcapPortUDP             Default = Disabled: Comma separated list of UDP ports to filter which packets will be");
-                Console.WriteLine("                          written to the pcap file. Use 'All' to capture on all ports.");
-            }
-
-            if (nullarg || String.Equals(arg, "PROXY"))
-            {
-                Console.WriteLine(" -Proxy                   Default = Disabled: (Y/N) Enable/Disable proxy listener authentication captures.");
-            }
-
-            if (nullarg || String.Equals(arg, "PROXYIP"))
-            {
-                Console.WriteLine(" -ProxyIP                 Default = Any: IP address for the proxy listener.");
-            }
-
-            if (nullarg || String.Equals(arg, "PROXYPORT"))
-            {
-                Console.WriteLine(" -ProxyPort               Default = 8492: TCP port for the proxy listener.");
-            }
-
-            if (nullarg || String.Equals(arg, "PROXYIGNORE"))
-            {
-                Console.WriteLine(" -ProxyIgnore             Default = Firefox: Comma separated list of keywords to use for filtering browser");
-                Console.WriteLine("                          user agents. Matching browsers will not be sent the wpad.dat file used for capturing");
-                Console.WriteLine("                          proxy authentications.Firefox does not work correctly with the proxy server failover");
-                Console.WriteLine("                          setup.Firefox will be left unable to connect to any sites until the proxy is cleared.");
-                Console.WriteLine("                          Remove 'Firefox' from this list to attack Firefox. If attacking Firefox, consider");
-                Console.WriteLine("                          setting -SpooferRepeat N to limit attacks against a single target so that victims can");
-                Console.WriteLine("                          recover Firefox connectivity by closing and reopening.");
-            }
-
-            if (nullarg || String.Equals(arg, "RUNCOUNT"))
-            {
-                Console.WriteLine(" -RunCount                Default = Unlimited: (Integer) Number of NTLMv1/NTLMv2 captures to perform before");
-                Console.WriteLine("                          auto-exiting.");
-            }
-
-            if (nullarg || String.Equals(arg, "RUNTIME"))
-            {
-                Console.WriteLine(" -RunTime                 Default = Disabled: Run time duration in minutes.");
-            }
-
-            if (nullarg || String.Equals(arg, "SMB"))
-            {
-                Console.WriteLine(" -SMB                     Default = Enabled: (Y/N) Enable/Disable SMB challenge/response capture. Warning,");
-                Console.WriteLine("                          LLMNR/NBNS spoofing can still direct targets to the host system's SMB server.");
-                Console.WriteLine("                          Block TCP ports 445/139 or kill the SMB services if you need to prevent login");
-                Console.WriteLine("                          equests from being processed by the Inveigh host.");
-            }
-
-            if (nullarg || String.Equals(arg, "SPOOFERDOMAINSIGNORE"))
-            {
-                Console.WriteLine(" -SpooferDomainsIgnore    Default = All: Comma separated list of requested domains to ignore when spoofing");
-                Console.WriteLine("                          with DNS.");
-            }
-
-            if (nullarg || String.Equals(arg, "SPOOFERDOMNAINSREPLY"))
-            {
-                Console.WriteLine(" -SpooferDomainsReply     Default = All: Comma separated list of requested domains to respond to when spoofing");
-                Console.WriteLine("                          with DNS.");
-            }
-
-            if (nullarg || String.Equals(arg, "SPOOFERHOSTSIGNORE"))
-            {
-                Console.WriteLine(" -SpooferHostsIgnore      Default = All: Comma separated list of requested hostnames to ignore when spoofing.");
-            }
-
-            if (nullarg || String.Equals(arg, "SPOOFERHOSTSREPLY"))
-            {
-                Console.WriteLine(" -SpooferHostsReply       Default = All: Comma separated list of requested hostnames to respond to when spoofing.");
-            }
-
-            if (nullarg || String.Equals(arg, "SPOOFERIP"))
-            {
-                Console.WriteLine(" -SpooferIP               IP address for spoofing. This arg is only necessary when redirecting victims to a system");
-                Console.WriteLine("                          other than the Inveigh host.");
-            }
-
-            if (nullarg || String.Equals(arg, "SPOOFERIPV6"))
-            {
-                Console.WriteLine(" -SpooferIPv6             IPv6 address for DHCPv6/LLMNR spoofing. This arg is only necessary when redirecting victims");
-                Console.WriteLine("                          to a system other than the Inveigh host. For DHCPv6, this will be the assigned DNS server IP.");
-            }
-
-            if (nullarg || String.Equals(arg, "SPOOFERIPSIGNORE"))
-            {
-                Console.WriteLine(" -SpooferIPsIgnore        Default = All: Comma separated list of source IP addresses to ignore when spoofing.");
-            }
-
-            if (nullarg || String.Equals(arg, "SPOOFERIPSREPLY"))
-            {
-                Console.WriteLine(" -SpooferIPsReply         Default = All: Comma separated list of source IP addresses to respond to when spoofing.");
-            }
-
-            if (nullarg || String.Equals(arg, "SPOOFERMACSIGNORE"))
-            {
-                Console.WriteLine(" -SpooferMACsIgnore       Default = All: Comma separated list of MAC addresses to ignore when DHCPv6 spoofing.");
-            }
-
-            if (nullarg || String.Equals(arg, "SPOOFERMACSREPLY"))
-            {
-                Console.WriteLine(" -SpooferMACsReply        Default = All: Comma separated list of MAC addresses to respond to when DHCPv6 spoofing.");
-            }
-
-            if (nullarg || String.Equals(arg, "SPOOFERREPEAT"))
-            {
-                Console.WriteLine(" -SpooferRepeat           Default = Enabled: (Y/N) Enable/Disable repeated LLMNR/ NBNS spoofs to a victim system");
-                Console.WriteLine("                          after one user challenge/response has been captured.");
-            }
-
-            if (nullarg || String.Equals(arg, "WPADAUTH"))
-            {
-                Console.WriteLine(" -WPADAuth                Default = NTLM: (Anonymous/Basic/NTLM/NTLMNoESS) HTTP/HTTPS listener authentication type");
-                Console.WriteLine("                          for wpad.dat requests. Setting to Anonymous can prevent browser login prompts. NTLMNoESS ");
-                Console.WriteLine("                          turns off the 'Extended Session Security' flag during negotiation.");
-            }
-
-            if (nullarg || String.Equals(arg, "WPADIP"))
-            {
-                Console.WriteLine(" -WPADIP                  Proxy server IP to be included in the wpad.dat response for WPAD enabled browsers. This");
-                Console.WriteLine("                          parameter must be used with WPADPort.");
-            }
-
-            if (nullarg || String.Equals(arg, "WPADPORT"))
-            {
-                Console.WriteLine(" -WPADPort                Proxy server port to be included in the wpad.dat response for WPAD enabled browsers. This");
-                Console.WriteLine("                          parameter must be used with WPADIP.");
-            }
-
-            if (nullarg || String.Equals(arg, "WPADRESPONSE"))
-            {
-                Console.WriteLine(" -WPADResponse            wpad.dat file contents to serve as the wpad.dat response. This parameter will not be used if");
-                Console.WriteLine("                          WPADIP and WPADPort are set. Use C# character escapes where necessary.");
-            }
-
-            Console.WriteLine();
         }
 
     }

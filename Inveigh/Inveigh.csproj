@@ -37,22 +37,26 @@
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.DirectoryServices" />
+    <Reference Include="System.DirectoryServices.Protocols" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="System.Data" />
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="DHCPv6.cs" />
-    <Compile Include="DNS.cs" />
-    <Compile Include="ICMPv6.cs" />
-    <Compile Include="LLMNR.cs" />
-    <Compile Include="MDNS.cs" />
-    <Compile Include="UDP.cs" />
+    <Compile Include="Control.cs" />
+    <Compile Include="Protocols\DHCPv6.cs" />
+    <Compile Include="Protocols\DNS.cs" />
+    <Compile Include="Protocols\ICMPv6.cs" />
+    <Compile Include="Protocols\LLMNR.cs" />
+    <Compile Include="Protocols\MDNS.cs" />
+    <Compile Include="Protocols\SMB.cs" />
+    <Compile Include="Protocols\UDP.cs" />
     <Compile Include="Util.cs" />
-    <Compile Include="HTTP.cs" />
-    <Compile Include="NBNS.cs" />
-    <Compile Include="NTLM.cs" />
+    <Compile Include="Protocols\HTTP.cs" />
+    <Compile Include="Protocols\NBNS.cs" />
+    <Compile Include="Protocols\NTLM.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Sniffer.cs" />

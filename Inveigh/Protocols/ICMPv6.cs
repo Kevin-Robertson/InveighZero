@@ -1,10 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Net;
 using System.Net.Sockets;
-using System.Text;
 using System.Threading;
 
 namespace Inveigh
@@ -21,7 +18,7 @@ namespace Inveigh
                 using (MemoryStream icmpv6MemoryStream = new MemoryStream())
                 {
                     icmpv6MemoryStream.Write((new byte[16] { 0x86, 0x00, 0x00, 0x00, 0x00, 0xc8, 0x07, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }), 0, 16);
-                    byte[] pseudoHeader = Util.GetIPv6PseudoHeader(IPAddress.Parse("ff02::1"), IPAddress.Parse(ipV6), 58, (int)icmpv6MemoryStream.Length);
+                    byte[] pseudoHeader = Util.GetIPv6PseudoHeader(IPAddress.Parse("ff02::1"), 58, (int)icmpv6MemoryStream.Length);
                     UInt16 checkSum = Util.GetPacketChecksum(pseudoHeader, icmpv6MemoryStream.ToArray());
                     icmpv6MemoryStream.Position = 2;
                     byte[] packetChecksum = Util.IntToByteArray2(checkSum);

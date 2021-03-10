@@ -12,126 +12,132 @@ namespace Inveigh
     class Util
     {
 
-        public static string HexStringToString(string hexString)
+        public static string HexStringToString(string hex)
         {
-            string[] stringArray = hexString.Split('-');
-            string stringConverted = "";
+            string[] characters = hex.Split('-');
+            string converted = "";
 
-            foreach (string character in stringArray)
+            foreach (string character in characters)
             {
-                stringConverted += new String(Convert.ToChar(Convert.ToInt16(character, 16)), 1);
+                converted += new String(Convert.ToChar(Convert.ToInt16(character, 16)), 1);
             }
 
-            return stringConverted;
+            return converted;
         }
 
-        public static uint UInt16DataLength(int start, byte[] field)
+        public static uint UInt16DataLength(int start, byte[] data)
         {
-            byte[] fieldExtract = new byte[2];
+            byte[] payloadExtract = new byte[2];
 
-            if (field.Length > start + 2)
+            if (data.Length > start + 2)
             {
-                System.Buffer.BlockCopy(field, start, fieldExtract, 0, 2);
+                Buffer.BlockCopy(data, start, payloadExtract, 0, 2);
             }
 
-            return BitConverter.ToUInt16(fieldExtract, 0);
+            return BitConverter.ToUInt16(payloadExtract, 0);
         }
 
-        public static uint UInt32DataLength(int start, byte[] field)
+        public static uint UInt32DataLength(int start, byte[] data)
         {
-            byte[] fieldExtract = new byte[4];
-            System.Buffer.BlockCopy(field, start, fieldExtract, 0, 4);
-            return BitConverter.ToUInt32(fieldExtract, 0);
+            byte[] dataExtract = new byte[4];
+            Buffer.BlockCopy(data, start, dataExtract, 0, 4);
+            return BitConverter.ToUInt32(dataExtract, 0);
         }
 
-        public static uint DataToUInt16(byte[] field)
+        public static ushort DataToUInt16(byte[] data)
         {
-            Array.Reverse(field);
-            return BitConverter.ToUInt16(field, 0);
+            Array.Reverse(data);
+            return BitConverter.ToUInt16(data, 0);
         }
 
-        public static string DataToString(int start, int length, byte[] field)
+        public static uint DataToUInt32(byte[] data)
         {
-            string payloadConverted = "";
+            Array.Reverse(data);
+            return BitConverter.ToUInt32(data, 0);
+        }
+
+        public static string DataToString(int start, int length, byte[] data)
+        {
+            string converted = "";
 
             if (length > 0)
             {
-                byte[] fieldExtract = new byte[length - 1];
-                Buffer.BlockCopy(field, start, fieldExtract, 0, fieldExtract.Length);
-                string payload = BitConverter.ToString(fieldExtract);
-                payload = payload.Replace("-00", String.Empty);
-                string[] payloadArray = payload.Split('-');
+                byte[] dataExtract = new byte[length - 1];
+                Buffer.BlockCopy(data, start, dataExtract, 0, dataExtract.Length);
+                string hex = BitConverter.ToString(dataExtract);
+                hex = hex.Replace("-00", String.Empty);
+                string[] payloadArray = hex.Split('-');
 
                 foreach (string character in payloadArray)
                 {
-                    payloadConverted += new System.String(Convert.ToChar(Convert.ToInt16(character, 16)), 1);
+                    converted += new String(Convert.ToChar(Convert.ToInt16(character, 16)), 1);
                 }
 
             }
 
-            return payloadConverted;
+            return converted;
         }
 
-        public static byte[] IntToByteArray2(int field)
+        public static byte[] IntToByteArray2(int number)
         {
-            byte[] byteArray = BitConverter.GetBytes(field);
-            Array.Reverse(byteArray);
-            return byteArray.Skip(2).ToArray();
+            byte[] data = BitConverter.GetBytes(number);
+            Array.Reverse(data);
+            return data.Skip(2).ToArray();
         }
 
-        public static string GetRecordType(byte[] requestRecordType)
+        public static string GetRecordType(byte[] data)
         {
-            string recordType = "";
+            string type = "";
 
-            switch (BitConverter.ToString(requestRecordType))
+            switch (BitConverter.ToString(data))
             {
 
                 case "00-01":
-                    recordType = "A";
+                    type = "A";
                     break;
 
                 case "00-1C":
-                    recordType = "AAAA";
+                    type = "AAAA";
                     break;
 
                 case "00-05":
-                    recordType = "CNAME";
+                    type = "CNAME";
                     break;
 
                 case "00-27":
-                    recordType = "DNAME";
+                    type = "DNAME";
                     break;
 
                 case "00-0F":
-                    recordType = "MX";
+                    type = "MX";
                     break;
 
                 case "00-02":
-                    recordType = "NS";
+                    type = "NS";
                     break;
 
                 case "00-0C":
-                    recordType = "PTR";
+                    type = "PTR";
                     break;
 
                 case "00-06":
-                    recordType = "SOA";
+                    type = "SOA";
                     break;
 
                 case "00-21":
-                    recordType = "SRV";
+                    type = "SRV";
                     break;
 
                 case "00-10":
-                    recordType = "TXT";
+                    type = "TXT";
                     break;               
 
             }
 
-            return recordType;
+            return type;
         }
 
-        public static string CheckRequest(string nameRequest, string sourceIP, string mainIP, string type, string requestType, string[] recordTypes)
+        public static string CheckRequest(string type, string request, string sourceIP, string mainIP, string requestType, string[] recordTypes, bool enabled)
         {
             string responseMessage = "response sent";
             bool isRepeat = false;
@@ -141,14 +147,14 @@ namespace Inveigh
             string nameRequestHost = "";
             string domainIgnore = "";
 
-            if (nameRequest.Contains("."))
+            if (request.Contains("."))
             {
-                nameRequestSplit = nameRequest.Split('.');
+                nameRequestSplit = request.Split('.');
                 nameRequestHost = nameRequestSplit[0];
             }
             else
             {
-                nameRequestHost = nameRequest;
+                nameRequestHost = request;
             }
 
             if (!Program.enabledSpooferRepeat)
@@ -239,13 +245,13 @@ namespace Inveigh
 
             }
 
-            if (String.Equals(type, "DNS") && nameRequest.Contains(".") && Program.argSpooferDomainsIgnore != null)
+            if (String.Equals(type, "DNS") && request.Contains(".") && Program.argSpooferDomainsIgnore != null)
             {
                 
                 foreach (string domain in Program.argSpooferDomainsIgnore)
                 {
 
-                    if (!domainIgnoreMatch && nameRequest.ToUpper().EndsWith(String.Concat(".", domain)))
+                    if (!domainIgnoreMatch && request.ToUpper().EndsWith(String.Concat(".", domain)))
                     {
                         domainIgnoreMatch = true;
                         domainIgnore = domain;
@@ -255,13 +261,13 @@ namespace Inveigh
 
             }
 
-            if (String.Equals(type, "DNS") && nameRequest.Contains(".") && Program.argSpooferDomainsReply != null)
+            if (String.Equals(type, "DNS") && request.Contains(".") && Program.argSpooferDomainsReply != null)
             {
 
                 foreach (string domain in Program.argSpooferDomainsReply)
                 {
 
-                    if (!domainReplyMatch && nameRequest.ToUpper().EndsWith(String.Concat(".", domain)))
+                    if (!domainReplyMatch && request.ToUpper().EndsWith(String.Concat(".", domain)))
                     {             
                         domainReplyMatch = true;
                     }
@@ -274,24 +280,31 @@ namespace Inveigh
             {
                 responseMessage = "inspect only";
             }
-            else if ((String.Equals(type, "LLMNR") && !Program.enabledLLMNR) || (String.Equals(type, "LLMNRv6") && !Program.enabledLLMNRv6) || (String.Equals(type, "NBNS") && !Program.enabledNBNS) ||
-                (String.Equals(type, "MDNS") && !Program.enabledMDNS) || (String.Equals(type, "DNS") && !Program.enabledDNS && !String.Equals(sourceIP, mainIP)))
+            else if ((!String.Equals(type, "DNS") && !enabled))
             {
                 responseMessage = "spoofer disabled";
             }
+            else if ((String.Equals(type, "DNS") && !enabled && !String.Equals(sourceIP, mainIP)))
+            {
+                responseMessage = "spoofer disabled";
+            }
+            else if(String.Equals(requestType[0], "MATCH") && String.Equals(type, "IPv4") && String.Equals(requestType, "AAAA") || String.Equals(type, "IPv6") && !String.Equals(requestType, "AAAA"))
+            {
+                responseMessage = String.Concat(requestType, " type ignored");
+            }      
             else if (recordTypes != null && recordTypes.Length > 0 && (!Array.Exists(recordTypes, element => element == requestType.ToUpper())))
             {
                 responseMessage = String.Concat(requestType, " replies disabled");
             }
-            else if (Program.argSpooferHostsIgnore != null && Program.argSpooferHostsIgnore.Length > 0 && (Array.Exists(Program.argSpooferHostsIgnore, element => element == nameRequest.ToUpper()) ||
+            else if (Program.argSpooferHostsIgnore != null && Program.argSpooferHostsIgnore.Length > 0 && (Array.Exists(Program.argSpooferHostsIgnore, element => element == request.ToUpper()) ||
                 (Array.Exists(Program.argSpooferHostsIgnore, element => element == nameRequestHost.ToUpper()))))
             {
-                responseMessage = String.Concat(nameRequest, " is on ignore list");
+                responseMessage = String.Concat(request, " is on ignore list");
             }
-            else if (Program.argSpooferHostsReply != null && Program.argSpooferHostsReply.Length > 0 && (!Array.Exists(Program.argSpooferHostsReply, element => element == nameRequest.ToUpper()) &&
+            else if (Program.argSpooferHostsReply != null && Program.argSpooferHostsReply.Length > 0 && (!Array.Exists(Program.argSpooferHostsReply, element => element == request.ToUpper()) &&
                 (!Array.Exists(Program.argSpooferHostsReply, element => element == nameRequestHost.ToUpper()))))
             {
-                responseMessage = String.Concat(nameRequest, " not on reply list");
+                responseMessage = String.Concat(request, " not on reply list");
             }
             else if (Program.argSpooferIPsIgnore != null && Array.Exists(Program.argSpooferIPsIgnore, element => element == sourceIP))
             {
@@ -349,12 +362,12 @@ namespace Inveigh
             return (UInt16)(~packetChecksum);
         }
 
-        public static Byte[] GetIPv6PseudoHeader(IPAddress sourceIP, IPAddress destinationIP, int nextHeader, int length)
+        public static Byte[] GetIPv6PseudoHeader(IPAddress destinationIP, int nextHeader, int length)
         {
             byte[] lengthData = BitConverter.GetBytes(length);
             Array.Reverse(lengthData);
             byte[] pseudoHeader = new byte[40];
-            Buffer.BlockCopy(sourceIP.GetAddressBytes(), 0, pseudoHeader, 0, 16);
+            Buffer.BlockCopy(Program.ipv6Address.GetAddressBytes(), 0, pseudoHeader, 0, 16);
             Buffer.BlockCopy(destinationIP.GetAddressBytes(), 0, pseudoHeader, 16, 16);
             Buffer.BlockCopy(lengthData, 0, pseudoHeader, 32, 4);
             pseudoHeader[39] = (byte)nextHeader;
@@ -595,11 +608,11 @@ namespace Inveigh
 
         }
 
-        public static string ParseNameQuery(int index, byte[] nameQuery)
+        public static string ParseNameQuery(int index, byte[] data)
         {
             string hostname = "";
             byte[] queryLength = new byte[1];
-            System.Buffer.BlockCopy(nameQuery, index, queryLength, 0, 1);
+            Buffer.BlockCopy(data, index, queryLength, 0, 1);
             int hostnameLength = queryLength[0];
             int i = 0;
 
@@ -607,10 +620,10 @@ namespace Inveigh
             {
                 int hostnameSegmentLength = hostnameLength;
                 byte[] hostnameSegment = new byte[hostnameSegmentLength];
-                System.Buffer.BlockCopy(nameQuery, (index + 1), hostnameSegment, 0, hostnameSegmentLength);
+                Buffer.BlockCopy(data, (index + 1), hostnameSegment, 0, hostnameSegmentLength);
                 hostname += Encoding.UTF8.GetString(hostnameSegment);
                 index += hostnameLength + 1;
-                hostnameLength = nameQuery[index];
+                hostnameLength = data[index];
                 i++;
 
                 if (hostnameLength > 0)
@@ -622,6 +635,578 @@ namespace Inveigh
             while (hostnameLength != 0 && i <= 127);
 
             return hostname;
+        }
+
+        public static byte[] NewTimeStampArray()
+        {
+            string timestamp = BitConverter.ToString(BitConverter.GetBytes(Convert.ToInt64((DateTime.UtcNow - new DateTime(1601, 1, 1)).TotalHours)));
+            byte[] timestampData = new byte[8];
+            int i = 0;
+
+            foreach (string character in timestamp.Split('-'))
+            {
+                timestampData[i] = Convert.ToByte(Convert.ToInt16(character, 16));
+                i++;
+            }
+
+            return timestampData;
+        }
+
+        public static void GetHelp(string arg)
+        {
+            bool nullarg = true;
+
+            Console.WriteLine();
+
+            if (String.IsNullOrEmpty(arg))
+            {
+                Console.WriteLine("args:\n");
+            }
+            else
+            {
+                Console.WriteLine("arg:\n");
+                nullarg = false;
+            }
+
+            if (nullarg || String.Equals(arg, "CHALLENGE"))
+            {
+                Console.WriteLine(" -Challenge                  Default = Random: 16 character hex NTLM challenge for use with the HTTP listener.");
+                Console.WriteLine("                             If left blank, a random challenge will be generated for each request.");
+                Console.WriteLine();
+            }
+
+            if (nullarg || String.Equals(arg, "CONSOLE"))
+            {
+                Console.WriteLine(" -Console                    Default = 2: Set the output level. 0 = none, 1 = captures/spoofs only, 2 = all");
+                Console.WriteLine();
+            }
+
+            if (nullarg || String.Equals(arg, "CONSOLESTATUS"))
+            {
+                Console.WriteLine(" -ConsoleStatus              Default = Disabled: Interval in minutes for displaying all unique captured usernames,");
+                Console.WriteLine("                             hashes, and credentials.");
+                Console.WriteLine();
+            }
+
+            if (nullarg || String.Equals(arg, "DHCPV6"))
+            {
+                Console.WriteLine(" -DHCPv6                     Default = Disabled: (Y/N) Enable/Disable DHCPv6 spoofing.");
+                Console.WriteLine();
+            }
+
+            if (nullarg || String.Equals(arg, "DHCPV6Local"))
+            {
+                Console.WriteLine(" -DHCPv6Local                Default = Disabled: (Y/N) Enable/Disable spoofing DHCPv6 packets from the Inveigh host.");
+                Console.WriteLine();
+            }
+
+            if (nullarg || String.Equals(arg, "DHCPV6DNSSUFFIX"))
+            {
+                Console.WriteLine(" -DHCPv6DNSSuffix            DNS search suffix to include in DHCPv6 responses.");
+                Console.WriteLine();
+            }
+
+            if (nullarg || String.Equals(arg, "DHCPV6RA"))
+            {
+                Console.WriteLine(" -DHCPv6RA                   Default = 30 Seconds: DHCPv6 ICMPv6 router advertise interval. Set to 0 to disable.");
+                Console.WriteLine();
+            }
+
+            if (nullarg || String.Equals(arg, "DNS"))
+            {
+                Console.WriteLine(" -DNS                        Default = Enabled: (Y/N) Enable/Disable DNS spoofing.");
+                Console.WriteLine();
+            }
+
+            if (nullarg || String.Equals(arg, "DNSHOSTNAME"))
+            {
+                Console.WriteLine(" -DNSHost                    Fully qualified hostname to use SOA/SRV responses.");
+                Console.WriteLine();
+            }
+
+            if (nullarg || String.Equals(arg, "DNSTTL"))
+            {
+                Console.WriteLine(" -DNSTTL                     Default = 30 Seconds: DNS TTL in seconds for the response packet.");
+                Console.WriteLine();
+            }
+
+            if (nullarg || String.Equals(arg, "DNSTYPES"))
+            {
+                Console.WriteLine(" -DNSTypes                   Default = A: Comma separated list of DNS types to spoof. Types include A, SOA, and SRV");
+                Console.WriteLine();
+            }
+
+            if (nullarg || String.Equals(arg, "ELEVATEDPRIVILEGE"))
+            {
+                Console.WriteLine(" -Elevated                   Default = Y: (Y/N) Set the privilege mode. Elevated privilege features require an");
+                Console.WriteLine("                             elevated administrator shell.");
+                Console.WriteLine();
+            }
+
+            if (nullarg || String.Equals(arg, "FILEOUTPUT"))
+            {
+                Console.WriteLine(" -FileOutput                 Default = Disabled: (Y/N) Enable/Disable real time file output.");
+                Console.WriteLine();
+            }
+
+            if (nullarg || String.Equals(arg, "FILEOUTPUTDIRECTORY"))
+            {
+                Console.WriteLine(" -FileOutputDirectory        Default = Working Directory: Valid path to an output directory for log and capture");
+                Console.WriteLine("                             files. FileOutput must also be enabled.");
+                Console.WriteLine();
+            }
+
+            if (nullarg || String.Equals(arg, "FILEPREFIX"))
+            {
+                Console.WriteLine(" -FilePrefix                 Default = Inveigh: Prefix for all output files.");
+                Console.WriteLine();
+            }
+
+            if (nullarg || String.Equals(arg, "FILEUNIQUE"))
+            {
+                Console.WriteLine(" -FileUnique                 Default = Enabled: (Y/N) Enable/Disable outputting challenge/response hashes for");
+                Console.WriteLine("                             only unique IP, domain/hostname, and username combinations when real time file");
+                Console.WriteLine("                             output is enabled.");
+                Console.WriteLine();
+            }
+
+            if (nullarg || String.Equals(arg, "HTTP"))
+            {
+                Console.WriteLine(" -HTTP                       Default = Enabled: (Y/N) Enable/Disable HTTP challenge/response capture.");
+                Console.WriteLine();
+            }
+
+            if (nullarg || String.Equals(arg, "HTTPAUTH"))
+            {
+                Console.WriteLine(" -HTTPAuth                   Default = NTLM: (Anonymous/Basic/NTLM/NTLMNoESS) HTTP/HTTPS listener authentication");
+                Console.WriteLine("                             type. This setting does not apply to wpad.dat requests. NTLMNoESS turns off the");
+                Console.WriteLine("                             'Extended Session Security' flag during negotiation.");
+                Console.WriteLine();
+            }
+
+            if (nullarg || String.Equals(arg, "HTTPIP"))
+            {
+                Console.WriteLine(" -HTTPIP                     Default = Any: IP address for the HTTP/HTTPS listener.");
+                Console.WriteLine();
+            }
+
+            if (nullarg || String.Equals(arg, "HTTPPORT"))
+            {
+                Console.WriteLine(" -HTTPPort                   Default = 80: TCP port for the HTTP listener.");
+                Console.WriteLine();
+            }
+
+            if (nullarg || String.Equals(arg, "HTTPRESPONSE"))
+            {
+                Console.WriteLine(" -HTTPResponse               Content to serve as the default HTTP/HTTPS/Proxy response. This response will not be");
+                Console.WriteLine("                             used for wpad.dat requests. This parameter will not be used if HTTPDir is set. Use C#");
+                Console.WriteLine("                             character escapes and newlines where necessary.");
+                Console.WriteLine();
+            }
+
+            if (nullarg || String.Equals(arg, "INSPECT"))
+            {
+                Console.WriteLine(" -Inspect                    (Switch) Inspect DNS/LLMNR/mDNS/NBNS/SMB traffic only.");
+                Console.WriteLine();
+            }
+
+            if (nullarg || String.Equals(arg, "IP"))
+            {
+                Console.WriteLine(" -IP                         Local IP address for listening and packet sniffing. This IP address will also be");
+                Console.WriteLine("                             used for spoofing if the SpooferIP arg is not set.");
+                Console.WriteLine();
+            }
+
+            if (nullarg || String.Equals(arg, "IPV6"))
+            {
+                Console.WriteLine(" -IPv6                       Local IPv6 address for listening and packet sniffing. This IP address will also be");
+                Console.WriteLine("                             used for spoofing if the SpooferIPv6 arg is not set.");
+                Console.WriteLine();
+            }
+
+            if (nullarg || String.Equals(arg, "LLMNR"))
+            {
+                Console.WriteLine(" -LLMNR                      Default = Enabled: (Y/N) Enable/Disable LLMNR spoofing.");
+                Console.WriteLine();
+            }
+
+            if (nullarg || String.Equals(arg, "LLMNRv6"))
+            {
+                Console.WriteLine(" -LLMNRv6                    Default = Disabled: (Y/N) Enable/Disable IPv6 LLMNR spoofing.");
+                Console.WriteLine();
+            }
+
+            if (nullarg || String.Equals(arg, "LLMNRTTL"))
+            {
+                Console.WriteLine(" -LLMNRTTL                   Default = 30 Seconds: LLMNR TTL in seconds for the response packet.");
+                Console.WriteLine();
+            }
+
+            if (nullarg || String.Equals(arg, "MAC"))
+            {
+                Console.WriteLine(" -MAC                        Local MAC address for IPv6.");
+                Console.WriteLine();
+            }
+
+            if (nullarg || String.Equals(arg, "MACHINEACCOUNTS"))
+            {
+                Console.WriteLine(" -MachineAccounts            Default = Disabled: (Y/N) Enable/Disable showing NTLM challenge/response captures");
+                Console.WriteLine("                             from machine accounts.");
+                Console.WriteLine();
+            }
+
+            if (nullarg || String.Equals(arg, "MDNS"))
+            {
+                Console.WriteLine(" -mDNS                       Default = Disabled: (Y/N) Enable/Disable mDNS spoofing.");
+                Console.WriteLine();
+            }
+
+            if (nullarg || String.Equals(arg, "MDNSTTL"))
+            {
+                Console.WriteLine(" -mDNSTTL                    Default = 120 Seconds: mDNS TTL in seconds for the response packet.");
+                Console.WriteLine();
+            }
+
+            if (nullarg || String.Equals(arg, "MDNSQuestions"))
+            {
+                Console.WriteLine(" -mDNSQuestions              Default = QU,QM: Comma separated list of mDNS question types to spoof. Note that QM will");
+                Console.WriteLine("                             send the response to 224.0.0.251. Types include QU = Query Unicast, QM = Query Multicast");
+                Console.WriteLine();
+            }
+
+            if (nullarg || String.Equals(arg, "MDNSTYPES"))
+            {
+                Console.WriteLine(" -mDNSTypes                  Default = A: Comma separated list of mDNS record types to spoof.");
+                Console.WriteLine();
+            }
+
+            if (nullarg || String.Equals(arg, "NBNS"))
+            {
+                Console.WriteLine(" -NBNS                       Default = Disabled: (Y/N) Enable/Disable NBNS spoofing.");
+                Console.WriteLine();
+            }
+
+            if (nullarg || String.Equals(arg, "NBNSTTL"))
+            {
+                Console.WriteLine(" -NBNSTTL                    Default = 165 Seconds: NBNS TTL in seconds for the response packet.");
+                Console.WriteLine();
+            }
+
+            if (nullarg || String.Equals(arg, "NBNSTYPES"))
+            {
+                Console.WriteLine(" -NBNSTypes                  Default = 00,20: Comma separated list of NBNS types to spoof. Note, not all types have");
+                Console.WriteLine("                             been tested. Types include 00 = Workstation Service, 03 = Messenger Service, 20 = Server");
+                Console.WriteLine("                             Service, 1B = Domain Name");
+                Console.WriteLine();
+            }
+
+            if (nullarg || String.Equals(arg, "PCAP"))
+            {
+                Console.WriteLine(" -Pcap                       Default = Disabled: (Y/N) Enable/Disable IPv4 TCP/UDP pcap output.");
+                Console.WriteLine();
+            }
+
+            if (nullarg || String.Equals(arg, "PCAPPORTTCP"))
+            {
+                Console.WriteLine(" -PcapPortTCP                Default = 139,445: Comma separated list of TCP ports to filter which packets will be");
+                Console.WriteLine("                             written to the pcap file. Use 'All' to capture on all ports.");
+                Console.WriteLine();
+            }
+
+            if (nullarg || String.Equals(arg, "PCAPPORTUDP"))
+            {
+                Console.WriteLine(" -PcapPortUDP                Default = Disabled: Comma separated list of UDP ports to filter which packets will be");
+                Console.WriteLine("                             written to the pcap file. Use 'All' to capture on all ports.");
+                Console.WriteLine();
+            }
+
+            if (nullarg || String.Equals(arg, "PROXY"))
+            {
+                Console.WriteLine(" -Proxy                      Default = Disabled: (Y/N) Enable/Disable proxy listener authentication captures.");
+                Console.WriteLine();
+            }
+
+            if (nullarg || String.Equals(arg, "PROXYIP"))
+            {
+                Console.WriteLine(" -ProxyIP                    Default = Any: IP address for the proxy listener.");
+                Console.WriteLine();
+            }
+
+            if (nullarg || String.Equals(arg, "PROXYPORT"))
+            {
+                Console.WriteLine(" -ProxyPort                  Default = 8492: TCP port for the proxy listener.");
+                Console.WriteLine();
+            }
+
+            if (nullarg || String.Equals(arg, "PROXYIGNORE"))
+            {
+                Console.WriteLine(" -ProxyIgnore                Default = Firefox: Comma separated list of keywords to use for filtering browser");
+                Console.WriteLine("                             user agents. Matching browsers will not be sent the wpad.dat file used for capturing");
+                Console.WriteLine("                             proxy authentications.Firefox does not work correctly with the proxy server failover");
+                Console.WriteLine("                             setup. Firefox will be left unable to connect to any sites until the proxy is cleared.");
+                Console.WriteLine("                             Remove 'Firefox' from this list to attack Firefox. If attacking Firefox, consider");
+                Console.WriteLine("                             setting -SpooferRepeat N to limit attacks against a single target so that victims can");
+                Console.WriteLine("                             recover Firefox connectivity by closing and reopening.");
+                Console.WriteLine();
+            }
+
+            if (nullarg || String.Equals(arg, "RUNCOUNT"))
+            {
+                Console.WriteLine(" -RunCount                   Default = Unlimited: (Integer) Number of NTLMv1/NTLMv2 captures to perform before");
+                Console.WriteLine("                             auto-exiting.");
+                Console.WriteLine();
+            }
+
+            if (nullarg || String.Equals(arg, "RUNTIME"))
+            {
+                Console.WriteLine(" -RunTime                    Default = Disabled: Run time duration in minutes.");
+                Console.WriteLine();
+            }
+
+            if (nullarg || String.Equals(arg, "SMB"))
+            {
+                Console.WriteLine(" -SMB                        Default = Enabled: (Y/N) Enable/Disable SMB challenge/response capture. Warning,");
+                Console.WriteLine("                             LLMNR/NBNS spoofing can still direct targets to the host system's SMB server.");
+                Console.WriteLine("                             Block TCP ports 445/139 or kill the SMB services if you need to prevent login");
+                Console.WriteLine("                             requests from being processed by the Inveigh host.");
+                Console.WriteLine();
+            }
+
+            if (nullarg || String.Equals(arg, "SPOOFERDOMAINSIGNORE"))
+            {
+                Console.WriteLine(" -SpooferDomainsIgnore       Default = All: Comma separated list of requested domains to ignore when spoofing");
+                Console.WriteLine("                             with DNS.");
+                Console.WriteLine();
+            }
+
+            if (nullarg || String.Equals(arg, "SPOOFERDOMAINSREPLY"))
+            {
+                Console.WriteLine(" -SpooferDomainsReply        Default = All: Comma separated list of requested domains to respond to when spoofing");
+                Console.WriteLine("                             with DNS.");
+                Console.WriteLine();
+            }
+
+            if (nullarg || String.Equals(arg, "SPOOFERHOSTSIGNORE"))
+            {
+                Console.WriteLine(" -SpooferHostsIgnore         Default = All: Comma separated list of requested hostnames to ignore when spoofing.");
+                Console.WriteLine();
+            }
+
+            if (nullarg || String.Equals(arg, "SPOOFERHOSTSREPLY"))
+            {
+                Console.WriteLine(" -SpooferHostsReply          Default = All: Comma separated list of requested hostnames to respond to when spoofing.");
+                Console.WriteLine();
+            }
+
+            if (nullarg || String.Equals(arg, "SPOOFERIP"))
+            {
+                Console.WriteLine(" -SpooferIP                  IP address for spoofing. This arg is only necessary when redirecting victims to a system");
+                Console.WriteLine("                             other than the Inveigh host.");
+                Console.WriteLine();
+            }
+
+            if (nullarg || String.Equals(arg, "SPOOFERIPV6"))
+            {
+                Console.WriteLine(" -SpooferIPv6                IPv6 address for DHCPv6/LLMNR spoofing. This arg is only necessary when redirecting");
+                Console.WriteLine("                             victims to a system other than the Inveigh host. For DHCPv6, this will be the assigned");
+                Console.WriteLine("                             DNS server IP.");
+                Console.WriteLine();
+            }
+
+            if (nullarg || String.Equals(arg, "SPOOFERIPSIGNORE"))
+            {
+                Console.WriteLine(" -SpooferIPsIgnore           Default = All: Comma separated list of source IP addresses to ignore when spoofing.");
+                Console.WriteLine();
+            }
+
+            if (nullarg || String.Equals(arg, "SPOOFERIPSREPLY"))
+            {
+                Console.WriteLine(" -SpooferIPsReply            Default = All: Comma separated list of source IP addresses to respond to when spoofing.");
+                Console.WriteLine();
+            }
+
+            if (nullarg || String.Equals(arg, "SPOOFERMACSIGNORE"))
+            {
+                Console.WriteLine(" -SpooferMACsIgnore          Default = All: Comma separated list of MAC addresses to ignore when DHCPv6 spoofing.");
+                Console.WriteLine();
+            }
+
+            if (nullarg || String.Equals(arg, "SPOOFERMACSREPLY"))
+            {
+                Console.WriteLine(" -SpooferMACsReply           Default = All: Comma separated list of MAC addresses to respond to when DHCPv6 spoofing.");
+                Console.WriteLine();
+            }
+
+            if (nullarg || String.Equals(arg, "SPOOFERREPEAT"))
+            {
+                Console.WriteLine(" -SpooferRepeat              Default = Enabled: (Y/N) Enable/Disable repeated LLMNR/ NBNS spoofs to a victim system");
+                Console.WriteLine("                             after one user challenge/response has been captured.");
+                Console.WriteLine();
+            }
+
+            if (nullarg || String.Equals(arg, "WPADAUTH"))
+            {
+                Console.WriteLine(" -WPADAuth                   Default = NTLM: (Anonymous/Basic/NTLM/NTLMNoESS) HTTP/HTTPS listener authentication type");
+                Console.WriteLine("                             for wpad.dat requests. Setting to Anonymous can prevent browser login prompts. NTLMNoESS ");
+                Console.WriteLine("                             turns off the 'Extended Session Security' flag during negotiation.");
+                Console.WriteLine();
+            }
+
+            if (nullarg || String.Equals(arg, "WPADDNSDOMAINISHOSTSDIRECT"))
+            {
+                Console.WriteLine(" -WPADdnsDomainIsHostsDirect Comma separated list of hosts to setup as direct in the wpad.dat file when using");
+                Console.WriteLine("                             proxy auth or specifying a proxy server. See PAC file dnsDomainIs function for details.");
+                Console.WriteLine();
+            }
+
+            if (nullarg || String.Equals(arg, "WPADDNSDOMAINISHOSTSPROXY"))
+            {
+                Console.WriteLine(" -WPADdnsDomainIsHostsProxy  Comma separated list of hosts to send through proxy in the wpad.dat file when using");
+                Console.WriteLine("                             proxy auth or specifying a proxy server. See PAC file dnsDomainIs function for details.");
+                Console.WriteLine();
+            }
+
+            if (nullarg || String.Equals(arg, "WPADIP"))
+            {
+                Console.WriteLine(" -WPADIP                     Proxy server IP to be included in the wpad.dat response for WPAD enabled browsers. This");
+                Console.WriteLine("                             parameter must be used with WPADPort.");
+                Console.WriteLine();
+            }
+
+
+            if (nullarg || String.Equals(arg, "WPADPORT"))
+            {
+                Console.WriteLine(" -WPADPort                   Proxy server port to be included in the wpad.dat response for WPAD enabled browsers.");
+                Console.WriteLine("                             This parameter must be used with WPADIP.");
+                Console.WriteLine();
+            }
+
+            if (nullarg || String.Equals(arg, "WPADRESPONSE"))
+            {
+                Console.WriteLine(" -WPADResponse               wpad.dat file contents to serve as the wpad.dat response. This parameter will not be");
+                Console.WriteLine("                             used if WPADIP and WPADPort are set. Use C# character escapes where necessary.");
+                Console.WriteLine();
+            }
+
+            if (nullarg || String.Equals(arg, "WPADSHEXPMATCHHOSTSDIRECT"))
+            {
+                Console.WriteLine(" -WPADshExpMatchHostsDirect  Comma separated list of hosts with wildcards to setup as direct in the wpad.dat file");
+                Console.WriteLine("                             when using proxy auth or specifying a proxy server. See PAC file shExpMatch function");
+                Console.WriteLine("                             for details.");
+            }
+
+            if (nullarg || String.Equals(arg, "WPADSHEXPMATCHHOSTSPROXY"))
+            {
+                Console.WriteLine(" -WPADshExpMatchHostsDirect  Comma separated list of hosts with wildcard to send to through proxy in the wpad.dat");
+                Console.WriteLine("                             file when using proxy auth or specifying a proxy server. See PAC file shExpMatch function");
+                Console.WriteLine("                             for details.");
+                Console.WriteLine();
+            }
+
+            if (nullarg || String.Equals(arg, "WPADSHEXPMATCHURLSDIRECT"))
+            {
+                Console.WriteLine(" -WPADshExpMatchURLsDirect   Comma separated list of URLs with wildcards to setup as direct in the wpad.dat file");
+                Console.WriteLine("                             when using proxy auth or specifying a proxy server. See PAC file shExpMatch function");
+                Console.WriteLine("                             for details.");
+                Console.WriteLine();
+            }
+
+            if (nullarg || String.Equals(arg, "WPADSHEXPMATCHURLSPROXY"))
+            {
+                Console.WriteLine(" -WPADshExpMatchURLsProxy    Comma seperated list of URLs with wildcards to send through proxy in the wpad.dat file");
+                Console.WriteLine("                             when using proxy auth or specifying a proxy server. See PAC file shExpMatch function");
+                Console.WriteLine("                             for details.");
+            }
+
+            Console.WriteLine();
+        }
+
+        public static void ValidateStringArguments(string[] arguments, string[] values, string[] validValues)
+        {
+            int i = 0;
+            foreach (string value in values)
+            {
+
+                if (!validValues.Contains(value))
+                {
+                    Console.WriteLine(arguments[i].Substring(3) + " value must be " + String.Join("/", validValues));
+                    Environment.Exit(0);
+                }
+
+                i++;
+            }
+
+        }
+
+        public static void ValidateStringArrayArguments(string argument, string[] values, string[] validValues)
+        {
+
+            foreach (string value in values)
+            {
+
+                if (!validValues.Contains(value))
+                {
+                    Console.WriteLine(argument.Substring(3) + " value must be " + String.Join("/", validValues));
+                    Environment.Exit(0);
+                }
+
+            }
+
+        }
+
+        public static void ValidateIntArguments(string[] arguments, string[] values)
+        {
+
+            int i = 0;
+            foreach (string value in values)
+            {
+
+                if (!String.IsNullOrEmpty(value))
+                {
+                    try
+                    {
+                        Int32.Parse(value);
+
+                    }
+                    catch
+                    {
+                        Console.WriteLine(arguments[i].Substring(3) + " value must be an integer");
+                        Environment.Exit(0);
+                    }
+
+                }
+
+                i++;
+            }
+
+        }
+
+        public static void ValidateIPAddressArguments(string[] arguments, string[] values)
+        {
+
+            int i = 0;
+            foreach (string value in values)
+            {
+
+                if (!String.IsNullOrEmpty(value))
+                {
+
+                    try
+                    {
+                        IPAddress.Parse(value);
+                        
+                    }
+                    catch
+                    {
+                        Console.WriteLine(arguments[i].Substring(3) + " value must be an IP address");
+                        Environment.Exit(0);
+                    }
+
+                }
+
+                i++;
+            }
+
         }
 
     }
