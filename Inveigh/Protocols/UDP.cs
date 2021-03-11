@@ -22,27 +22,36 @@ namespace Inveigh
 
             try
             {
-                
                 udpClient.ExclusiveAddressUse = false;
                 udpClient.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
                 udpClient.Client.IOControl((IOControlCode)SIO_UDP_CONNRESET, new byte[] { 0, 0, 0, 0 }, null);
                 udpClient.Client.Bind(ipEndPoint);
+
+                Console.WriteLine(type + " " + ipVersion + " " + listenerIP);
+
+                switch (type)
+                {
                 
-                if (String.Equals(type, "LLMNR"))
-                {
-                    udpClient.JoinMulticastGroup(IPAddress.Parse("224.0.0.252"), Program.ipAddress);
-                }
-                else if (String.Equals(type, "LLMNRv6"))
-                {
-                    udpClient.JoinMulticastGroup(IPAddress.Parse("ff02::1:3"), Program.ipv6Address);
-                }
-                else if (String.Equals(type, "MDNS"))
-                {
-                    udpClient.JoinMulticastGroup(IPAddress.Parse("224.0.0.251"), Program.ipAddress);
-                }
-                else if (String.Equals(type, "DHCPv6"))
-                {
-                    udpClient.JoinMulticastGroup(IPAddress.Parse("ff02::1:2"), Program.ipv6Address);
+                    case "LLMNR":
+                        udpClient.JoinMulticastGroup(IPAddress.Parse("224.0.0.252"), Program.ipAddress);
+                        break;
+
+                    case "LLMNRv6":
+                        udpClient.JoinMulticastGroup(IPAddress.Parse("ff02::1:3"));
+                        break;
+
+                    case "MDNS":
+                        udpClient.JoinMulticastGroup(IPAddress.Parse("224.0.0.251"), Program.ipAddress);
+                        break;
+
+                    case "MDNSv6":
+                        udpClient.JoinMulticastGroup(IPAddress.Parse("ff02::fb"));
+                        break;
+
+                    case "DHCPv6":
+                        udpClient.JoinMulticastGroup(IPAddress.Parse("ff02::1:2"));
+                        break;
+
                 }
 
             }
@@ -51,7 +60,7 @@ namespace Inveigh
 
                 lock (Program.outputList)
                 {
-                    Program.outputList.Add(String.Format("[!] Error starting unprivileged DNS spoofer, UDP port sharing does not work on all versions of Windows.{0}", DateTime.Now.ToString("s"), ex)); // todo fix
+                    Program.outputList.Add(String.Format("[!] Error starting unprivileged mDNS spoofer, UDP port sharing does not work on all versions of Windows.{1}", DateTime.Now.ToString("s"), ex)); // todo fix
                 }
 
                 throw;

@@ -10,7 +10,7 @@ namespace Inveigh
     {
          // todo move
 
-        public static void SnifferSpoofer(string ipVersion, string snifferIP)
+        public static void SnifferSpoofer(string ipVersion, string protocol, string snifferIP)
         {
             byte[] spooferIPData = IPAddress.Parse(Program.argSpooferIP).GetAddressBytes();
             byte[] spooferIPv6Data = new byte[16];
@@ -52,15 +52,24 @@ namespace Inveigh
                 
                 if (String.Equals(ipVersion, "IPv4"))
                 {
-                    snifferSocket = new Socket(addressFamily, SocketType.Raw, ProtocolType.IP);                  
+                    snifferSocket = new Socket(addressFamily, SocketType.Raw, ProtocolType.IP);
+                    snifferSocket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.HeaderIncluded, true);
                 }
                 else
                 {
-                    snifferSocket = new Socket(addressFamily, SocketType.Raw, ProtocolType.Udp);
+
+                    if (String.Equals(protocol, "UDP"))
+                    {
+                        snifferSocket = new Socket(addressFamily, SocketType.Raw, ProtocolType.Udp);
+                    }
+                    else
+                    {
+                        snifferSocket = new Socket(addressFamily, SocketType.Raw, ProtocolType.IP);
+                    }
+
                 }
 
                 snifferIPEndPoint = new IPEndPoint(IPAddress.Parse(snifferIP), 0);
-                snifferSocket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.HeaderIncluded, true);
                 snifferSocket.ReceiveBufferSize = 65534;
                 snifferSocket.Bind(snifferIPEndPoint);
                 snifferSocket.IOControl(IOControlCode.ReceiveAll, snifferIn, snifferOut);
@@ -144,7 +153,17 @@ namespace Inveigh
                         else
                         {
                             sourceIPAddress = (snifferEndPoint as IPEndPoint).Address;
-                            protocolNumber = (int)snifferSocket.ProtocolType;
+                            //protocolNumber = (int)snifferSocket.ProtocolType;
+
+                            if (String.Equals(protocol, "UDP"))
+                            {
+                                protocolNumber = 17;
+                            }
+                            else
+                            {
+                                protocolNumber = 6;
+                            }
+
                         }
 
                         switch (protocolNumber)
@@ -182,7 +201,6 @@ namespace Inveigh
                                     {
                                         case 139:
                                             SMB.SMBIncoming(payloadBytes, destinationIPAddress, sourceIPAddress, snifferIP, tcpDestinationPortNumber, tcpSourcePortNumber);
-
                                             break;
 
                                         case 445:
@@ -256,12 +274,7 @@ namespace Inveigh
                                         break;
 
                                     case 5353:
-
-                                        if (String.Equals(ipVersion, "IPv4"))
-                                        {
-                                            MDNS.MDNSReply("sniffer", ipVersion, udpSourcePortData, udpPayload, sourceIPAddress, destinationIPAddress, null, null);
-                                        }
-
+                                        MDNS.MDNSReply("sniffer", ipVersion, udpSourcePortData, udpPayload, sourceIPAddress, destinationIPAddress, null, null);
                                         break;
 
                                     case 5355:

@@ -179,6 +179,12 @@ namespace Inveigh
 
                     case "AAAA":
                         spooferIPData = Program.spooferIPv6Data;
+                        memoryStream.Write(transactionID, 0, transactionID.Length);
+                        memoryStream.Write((new byte[10] { 0x80, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00 }), 0, 10);
+                        memoryStream.Write(request, 0, request.Length);
+                        memoryStream.Write((new byte[4] { 0x00, 0x1c, 0x00, 0x01 }), 0, 4);
+                        memoryStream.Write((new byte[2] { 0xc0, 0x0c }), 0, 2);
+                        memoryStream.Write((new byte[4] { 0x00, 0x1c, 0x00, 0x01 }), 0, 4);
                         break;
 
                     case "SOA":

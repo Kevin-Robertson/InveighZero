@@ -115,7 +115,7 @@ namespace Inveigh
 
                     lock (Program.outputList)
                     {
-                        Program.outputList.Add(String.Format("[.] [{0}] SMB({1}) negotiation request detected from {2}", DateTime.Now.ToString("s"), smbPort, session));
+                        Program.outputList.Add(String.Format("[.] [{0}] SMB1({1}) negotiation request detected from {2}", DateTime.Now.ToString("s"), smbPort, session));
                     }
 
                 }
@@ -124,7 +124,7 @@ namespace Inveigh
 
                     lock (Program.outputList)
                     {
-                        Program.outputList.Add(String.Format("[.] [{0}] SMB({1}) outgoing negotiation request detected to {2}", DateTime.Now.ToString("s"), sourcePort, sessionOutgoing));
+                        Program.outputList.Add(String.Format("[.] [{0}] SMB1({1}) outgoing negotiation request detected to {2}", DateTime.Now.ToString("s"), sourcePort, sessionOutgoing));
                     }
 
                 }
@@ -141,7 +141,7 @@ namespace Inveigh
 
                     lock (Program.outputList)
                     {
-                        Program.outputList.Add(String.Format("[.] [{0}] SMB({1}) negotiation request detected from {2}", DateTime.Now.ToString("s"), smbPort, session));
+                        Program.outputList.Add(String.Format("[.] [{0}] SMB2+({1}) negotiation request detected from {2}", DateTime.Now.ToString("s"), smbPort, session));
                     }
 
                 }
@@ -150,7 +150,7 @@ namespace Inveigh
 
                     lock (Program.outputList)
                     {
-                        Program.outputList.Add(String.Format("[.] [{0}] SMB({1}) outgoing negotiation request detected to {2}", DateTime.Now.ToString("s"), sourcePort, sessionOutgoing));
+                        Program.outputList.Add(String.Format("[.] [{0}] SMB2+({1}) outgoing negotiation request detected to {2}", DateTime.Now.ToString("s"), sourcePort, sessionOutgoing));
                     }
 
                 }
