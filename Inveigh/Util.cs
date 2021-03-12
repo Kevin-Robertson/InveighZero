@@ -330,6 +330,14 @@ namespace Inveigh
             {
                 responseMessage = String.Concat("previous ", sourceIP, " capture");
             }
+            else if (String.Equals(sourceIP, mainIP))
+            {
+                responseMessage = "outgoing query";
+            }
+            else if (String.Equals(type, "DNS") && Program.enabledDNSRelay)
+            {
+                responseMessage = "DNS relay";
+            }
 
             return responseMessage;
         }
@@ -438,6 +446,39 @@ namespace Inveigh
             }
 
             return macAddressList.FirstOrDefault();
+        }
+
+        public static string GetLocalDNSAddress(string ipVersion, string ipAddress)
+        {
+            AddressFamily addressFamily = AddressFamily.InterNetwork;
+
+            if (String.Equals(ipVersion, "IPv6"))
+            {
+                addressFamily = AddressFamily.InterNetworkV6;
+            }
+
+            foreach (NetworkInterface networkInterface in NetworkInterface.GetAllNetworkInterfaces())
+            {
+
+                if (networkInterface.NetworkInterfaceType == NetworkInterfaceType.Ethernet && networkInterface.OperationalStatus == OperationalStatus.Up)
+                {
+
+                    foreach (UnicastIPAddressInformation ip in networkInterface.GetIPProperties().UnicastAddresses)
+                    {
+
+                        if (ip.Address.AddressFamily == addressFamily && String.Equals(ip.Address.ToString(), ipAddress))
+                        {
+                            IPAddressCollection ipAddressCollection = networkInterface.GetIPProperties().DnsAddresses;
+                            return ipAddressCollection.ToArray().FirstOrDefault().ToString();
+                        }
+
+                    }
+
+                }
+
+            }
+
+            return null;
         }
 
         public static byte[] NewDNSNameArray(string name, bool addByte)

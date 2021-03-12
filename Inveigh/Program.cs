@@ -15,7 +15,6 @@ namespace Inveigh
     {
         public static Hashtable smbSessionTable = Hashtable.Synchronized(new Hashtable());
         public static Hashtable httpSessionTable = Hashtable.Synchronized(new Hashtable());
-        public static Hashtable adidnsTable = Hashtable.Synchronized(new Hashtable());
         public static IList<string> outputList = new List<string>();
         public static IList<string> consoleList = new List<string>();
         public static IList<string> logList = new List<string>();
@@ -39,9 +38,12 @@ namespace Inveigh
         public static bool enabledFileOutput = false;
         public static bool enabledFileUnique = false;
         public static bool enabledHTTP = false;
+        public static bool enabledICMPv6 = false;
         public static bool enabledDHCPv6 = false;
         public static bool enabledDHCPv6Local = false;
         public static bool enabledDNS = false;
+        public static bool enabledDNSv6 = false;
+        public static bool enabledDNSRelay = false;
         public static bool enabledInspect = false;
         public static bool enabledADIDNS = false;
         public static bool enabledNBNS = false;
@@ -77,8 +79,11 @@ namespace Inveigh
         public static string argDHCPv6Local = "N";
         public static string argDHCPv6DNSSuffix = "";
         public static string argDHCPv6RA = "30";
-        public static string argDNS = "Y";
+        public static string argDNS = "N";
+        public static string argDNSv6 = "N";
         public static string argDNSHost = "";
+        public static string argDNSServer = "";
+        public static string argDNSRelay = "Y";
         public static string argDNSTTL = "30";
         public static string[] argDNSTypes = { "A" };
         public static string argElevated = "Y";
@@ -93,6 +98,8 @@ namespace Inveigh
         public static string argHTTPResponse = "";
         public static string argIP = "";
         public static string argIPv6 = "";
+        public static string argICMPv6 = "N";
+        public static string argICMPv6Interval = "200";
         public static string argLLMNR = "Y";
         public static string argLLMNRTTL = "30";
         public static string[] argLLMNRTypes = { "A" };
@@ -140,6 +147,7 @@ namespace Inveigh
         public static IPAddress ipAddress;
         public static IPAddress ipv6Address;
         public static int dhcpv6Random = (new Random()).Next(1, 9999);
+        public static int icmpv6Interval;
         public static byte[] spooferIPData;
         public static byte[] spooferIPv6Data;
         public static byte[] macData = new byte[6];
@@ -148,13 +156,13 @@ namespace Inveigh
         public static string computerName = Environment.MachineName;
         public static string netbiosDomain = Environment.UserDomainName;
         public static string dnsDomain = "";
+        public static IPAddress dnsServerAddress;
         public static FileStream pcapFile = null;
 
         static void Main(string[] args)
-        {
-            
+        {           
             //end parameters
-            string version = "0.92 Dev 2";          
+            string version = "0.92 Dev 3";          
             string wpadDNSDomainIsHostsDirect = "";
             string wpadSHExpMatchHostsDirect = "";
             string wpadSHExpMatchURLsDirect = "";
@@ -165,7 +173,6 @@ namespace Inveigh
             int consoleStatus = 0;
             int runCount = 0; // todo check
             int runTime = 0;
-            int dhcpv6RA = 0;
             bool isSession = false;
             IList wpadDirectHostsList = new List<string>();
 
@@ -242,9 +249,24 @@ namespace Inveigh
                                 argDNS = args[entry.index + 1].ToUpper();
                                 break;
 
+                            case "-DNSV6":
+                            case "/DNSV6":
+                                argDNSv6 = args[entry.index + 1].ToUpper();
+                                break;
+
                             case "-DNSHOST":
                             case "/DNSHOST":
                                 argDNSHost = args[entry.index + 1];
+                                break;
+
+                            case "-DNSRELAY":
+                            case "/DNSRELAY":
+                                argDNSRelay = args[entry.index + 1].ToUpper();
+                                break;
+
+                            case "-DNSSERVER":
+                            case "/DNSSERVER":
+                                argDNSServer = args[entry.index + 1];
                                 break;
 
                             case "-DNSTTL":
@@ -314,6 +336,16 @@ namespace Inveigh
                             case "-INSPECT":
                             case "/INSPECT":
                                 enabledInspect = true;
+                                break;
+
+                            case "-ICMPV6":
+                            case "/ICMPV6":
+                                argICMPv6 = args[entry.index + 1].ToUpper();
+                                break;
+
+                            case "-ICMPV6INTERVAL":
+                            case "/ICMPV6INTERVAL":
+                                argICMPv6Interval = args[entry.index + 1];
                                 break;
 
                             case "-IP":
@@ -600,10 +632,10 @@ namespace Inveigh
 
             }
 
-            string[] ynArguments = { nameof(argConsoleUnique), nameof(argDHCPv6), nameof(argDHCPv6Local), nameof(argDNS), nameof(argFileOutput), nameof(argFileUnique), nameof(argHTTP), nameof(argLLMNR), nameof(argLLMNRv6), nameof(argLogOutput), nameof(argMachineAccounts), nameof(argMDNS), nameof(argMDNSv6), nameof(argMDNSUnicast), nameof(argNBNS), nameof(argPcap), nameof(argProxy), nameof(argSMB) };
-            string[] ynArgumentValues = { argConsoleUnique, argDHCPv6, argDHCPv6Local, argDNS, argFileOutput, argFileUnique, argHTTP, argLLMNR, argLLMNRv6, argLogOutput, argMachineAccounts, argMDNS, argMDNS, argMDNSUnicast, argNBNS, argPcap, argProxy, argSMB };
+            string[] ynArguments = { nameof(argConsoleUnique), nameof(argDHCPv6), nameof(argDHCPv6Local), nameof(argDNS), nameof(argDNSv6), nameof(argDNSRelay), nameof(argFileOutput), nameof(argFileUnique), nameof(argHTTP), nameof(argICMPv6), nameof(argLLMNR), nameof(argLLMNRv6), nameof(argLogOutput), nameof(argMachineAccounts), nameof(argMDNS), nameof(argMDNSv6), nameof(argMDNSUnicast), nameof(argNBNS), nameof(argPcap), nameof(argProxy), nameof(argSMB) };
+            string[] ynArgumentValues = { argConsoleUnique, argDHCPv6, argDHCPv6Local, argDNS, argDNSv6, argDNSRelay, argFileOutput, argFileUnique, argHTTP, argICMPv6, argLLMNR, argLLMNRv6, argLogOutput, argMachineAccounts, argMDNS, argMDNS, argMDNSUnicast, argNBNS, argPcap, argProxy, argSMB };
             Util.ValidateStringArguments(ynArguments, ynArgumentValues, new string[] { "Y", "N" } );
-            Util.ValidateStringArguments(new string[] { nameof(argConsole) }, new string[] { argConsole }, new string[] { "0", "1", "2" });
+            Util.ValidateStringArguments(new string[] { nameof(argConsole) }, new string[] { argConsole }, new string[] { "0", "1", "2", "3" });
             string[] authArguments = { nameof(argHTTPAuth), nameof(argProxyAuth), nameof(argWPADAuth) };
             string[] authArgumentValues = { argHTTPAuth, argProxyAuth, argWPADAuth };
             Util.ValidateStringArguments(authArguments, new string[] { argHTTPAuth, argWPADAuth }, new string[] { "ANONYMOUS", "BASIC", "NTLM", "NTLMNOESS" });    
@@ -611,8 +643,8 @@ namespace Inveigh
             Util.ValidateStringArrayArguments(nameof(argNBNSTypes), argNBNSTypes, new string[] { "00", "03", "20", "1B", "1C", "1D", "1E" });
             Util.ValidateStringArrayArguments(nameof(argMDNSQuestions), argMDNSQuestions, new string[] { "QM", "QU" });
             Util.ValidateStringArrayArguments(nameof(argMDNSQuestions), argMDNSTypes, new string[] { "A", "AAAA" });
-            string[] intArguments = { nameof(argConsole), nameof(argConsoleQueueLimit), nameof(argConsoleStatus), nameof(argDHCPv6RA), nameof(argDNSTTL), nameof(argHTTPPort), nameof(argLLMNRTTL), nameof(argMDNSTTL), nameof(argNBNSTTL), nameof(argProxyPort), nameof(argRunCount), nameof(argRunTime), nameof(argWPADPort) };
-            string[] intArgumentValues = { argConsole, argConsoleQueueLimit, argConsoleStatus, argDHCPv6RA, argDNSTTL, argHTTPPort, argLLMNRTTL, argMDNSTTL, argNBNSTTL, argProxyPort, argRunCount, argRunTime, argWPADPort };
+            string[] intArguments = { nameof(argConsole), nameof(argConsoleQueueLimit), nameof(argConsoleStatus), nameof(argDNSTTL), nameof(argHTTPPort), nameof(argICMPv6Interval), nameof(argLLMNRTTL), nameof(argMDNSTTL), nameof(argNBNSTTL), nameof(argProxyPort), nameof(argRunCount), nameof(argRunTime), nameof(argWPADPort) };
+            string[] intArgumentValues = { argConsole, argConsoleQueueLimit, argConsoleStatus, argDNSTTL, argHTTPPort, argICMPv6Interval, argLLMNRTTL, argMDNSTTL, argNBNSTTL, argProxyPort, argRunCount, argRunTime, argWPADPort };
             Util.ValidateIntArguments(intArguments, intArgumentValues);
             string[] ipAddressArguments = { nameof(argIP), nameof(argIPv6), nameof(argHTTPIP), nameof(argProxyIP), nameof(argSpooferIP), nameof(argSpooferIPv6), nameof(argWPADIP) };
             string[] ipAddressArgumentValues = { argIP, argIPv6, argHTTPIP, argProxyIP, argSpooferIP, argSpooferIPv6, argWPADIP};
@@ -627,7 +659,7 @@ namespace Inveigh
             console = Int32.Parse(argConsole);
             consoleQueueLimit = Int32.Parse(argConsoleQueueLimit);
             consoleStatus = Int32.Parse(argConsoleStatus);
-            dhcpv6RA = Int32.Parse(argDHCPv6RA);
+            icmpv6Interval = Int32.Parse(argICMPv6Interval);
             runCount = Int32.Parse(argRunCount);
             runTime = Int32.Parse(argRunTime);
             if (String.Equals(argConsoleUnique, "Y")) { enabledConsoleUnique = true; }
@@ -637,7 +669,10 @@ namespace Inveigh
             if (String.Equals(argDHCPv6, "Y")) { enabledDHCPv6 = true; }
             if (String.Equals(argDHCPv6Local, "Y")) { enabledDHCPv6Local = true; }
             if (String.Equals(argDNS, "Y")) { enabledDNS = true; }
+            if (String.Equals(argDNSv6, "Y")) { enabledDNSv6 = true; }
+            if (String.Equals(argDNSRelay, "Y")) { enabledDNSRelay = true; }
             if (String.Equals(argHTTP, "Y")) { enabledHTTP = true; }
+            if (String.Equals(argICMPv6, "Y")) { enabledICMPv6 = true; }
             if (String.Equals(argLLMNR, "Y")) { enabledLLMNR = true; }
             if (String.Equals(argLLMNRv6, "Y")) { enabledLLMNRv6 = true; }
             if (String.Equals(argLogOutput, "Y")) { enabledLogOutput = true; }
@@ -766,7 +801,42 @@ namespace Inveigh
 
             if (string.IsNullOrEmpty(argSpooferIPv6))
             {
+
+                if (enabledDHCPv6 && !enabledDNSv6)
+                {
+                    outputList.Add(String.Format("[!] Enabled DNSv6 when using DHCPv6 with a local SpooferIPv6", version, DateTime.Now.ToString("s")));
+                }
+
                 argSpooferIPv6 = argIPv6;
+            }
+
+            if (enabledDNSRelay && !String.IsNullOrEmpty(argDNSServer))
+            {
+
+                try
+                {
+                    dnsServerAddress = IPAddress.Parse(argDNSServer);
+                }
+                catch
+                {
+
+                    try
+                    {
+                        dnsServerAddress = Dns.GetHostEntry(argDNSServer).AddressList[0]; // todo replace
+                    }
+                    catch
+                    {
+                        Console.WriteLine("DNSServer is invalid");
+                        Environment.Exit(0);
+                    }
+
+                }
+
+            }
+            else if (enabledDNSRelay)
+            {
+                argDNSServer = Util.GetLocalDNSAddress("IPv4", argIP);
+                dnsServerAddress = IPAddress.Parse(argDNSServer);
             }
 
             //todo add IPv6 checks
@@ -806,6 +876,7 @@ namespace Inveigh
                     enabledHTTP = false;
                     enabledProxy = false;
                     enabledSMB = false;
+                    enabledICMPv6 = false;
                 }
                 else
                 {
@@ -947,10 +1018,22 @@ namespace Inveigh
                 else optionStatus = "Disabled";
                 outputList.Add(String.Format("[+] DHCPv6 Local Attacks = {0}", optionStatus));
                 if (!String.IsNullOrEmpty(argDHCPv6DNSSuffix)) outputList.Add(String.Format("[+] DHCPv6 DNS Suffix = {0}", argDHCPv6DNSSuffix));
-                if (dhcpv6RA > 0) outputList.Add(String.Format("[+] DHCPv6 ICMPv6 Router Advertise Interval = {0} Seconds", argDHCPv6RA));             
+                           
             }
 
-            if (enabledDNS) optionStatus = "Enabled";
+            if (enabledICMPv6)
+            {
+
+                if (enabledDHCPv6)
+                {
+                    outputList.Add(String.Format("[+] ICMPv6 RA DHCPv6 Interval = {0} Seconds", argDHCPv6RA));
+                }
+                else
+                {
+                    outputList.Add(String.Format("[+] ICMPv6 RA DNS Interval = {0} Seconds", argDHCPv6RA));
+                }
+
+            }
 
             if (enabledDNS)
             {
@@ -958,6 +1041,18 @@ namespace Inveigh
                 if (!String.IsNullOrEmpty(argDNSHost)) { outputList.Add(String.Format("[+] DNS Host = {0}", argDNSHost)); }
             }
             else outputList.Add(String.Format("[+] DNS Spoofer = Disabled"));
+
+            if (enabledDNSv6)
+            {
+                outputList.Add(String.Format("[+] DNSv6 Spoofer For Types {0} = Enabled", String.Join(",", argDNSTypes)));
+                if (!String.IsNullOrEmpty(argDNSHost)) { outputList.Add(String.Format("[+] DNSv6 Host = {0}", argDNSHost)); }
+            }
+            else outputList.Add(String.Format("[+] DNSv6 Spoofer = Disabled"));
+
+            if (enabledDNSRelay && (enabledDNS || enabledDNSv6))
+            {
+                outputList.Add(String.Format("[+] DNS Relay to {0} = Enabled", dnsServerAddress.ToString()));
+            }
 
             if (enabledLLMNR) optionStatus = "Enabled";
             else optionStatus = "Disabled";
@@ -1053,7 +1148,7 @@ namespace Inveigh
                     snifferSpooferThread.Start();
                 }
 
-                if (!String.IsNullOrEmpty(argIPv6) && enabledElevated && (enabledDHCPv6 || enabledLLMNRv6 || enabledMDNSv6))
+                if (!String.IsNullOrEmpty(argIPv6) && enabledElevated && (enabledDHCPv6 || enabledDNSv6 || enabledLLMNRv6 || enabledMDNSv6))
                 {
                     Thread snifferSpooferIPv6Thread = new Thread(() => Sniffer.SnifferSpoofer("IPv6", "UDP", argIPv6));
                     snifferSpooferIPv6Thread.Start();
@@ -1065,9 +1160,9 @@ namespace Inveigh
                     snifferSpooferIPv6TCPThread.Start();
                 }
 
-                if (!enabledInspect && !String.IsNullOrEmpty(argIPv6) && enabledDHCPv6 && dhcpv6RA > 0)
+                if (!enabledInspect && !String.IsNullOrEmpty(argIPv6) && enabledICMPv6)
                 {
-                    Thread icmpv6Thread = new Thread(() => ICMPv6.icmpv6RouterAdvertise(argIPv6, dhcpv6RA));
+                    Thread icmpv6Thread = new Thread(() => ICMPv6.icmpv6RouterAdvertise());
                     icmpv6Thread.Start();
                 }
 

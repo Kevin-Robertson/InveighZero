@@ -200,7 +200,7 @@ namespace Inveigh
                 Console.WriteLine(consoleEntry);
                 Console.ResetColor();
             }
-            else if (consoleEntry.Contains("[response sent]") || consoleEntry.Contains("[advertised ") || consoleEntry.Contains("[assigned "))
+            else if (consoleEntry.Contains("response sent]") || consoleEntry.Contains("[advertised ") || consoleEntry.Contains("[assigned "))
             {
                 int outputIndex = (consoleEntry.Substring(5)).IndexOf("[") + 6;
                 string outputStart = consoleEntry.Substring(0, outputIndex);
@@ -259,7 +259,12 @@ namespace Inveigh
                     while (Program.outputList.Count > 0)
                     {
 
-                        if (Program.console == 2 && (Program.outputList[0].StartsWith("[+]") || Program.outputList[0].StartsWith("[*]") || Program.outputList[0].StartsWith("[.]") || Program.outputList[0].StartsWith("[!]") || Program.outputList[0].StartsWith("[-]") || Program.outputList[0].StartsWith("[not unique]")))
+                        if (Program.console == 3 && (Program.outputList[0].StartsWith("[+]") || Program.outputList[0].StartsWith("[*]") || Program.outputList[0].StartsWith("[.]") || Program.outputList[0].StartsWith("[!]") || Program.outputList[0].StartsWith("[-]") || Program.outputList[0].StartsWith("[not unique]")))
+                        {
+                            Program.consoleList.Add(Program.outputList[0]);
+                        }
+
+                        if (Program.console == 2 && !Program.outputList[0].Contains(" disabled]"))
                         {
                             Program.consoleList.Add(Program.outputList[0]);
                         }

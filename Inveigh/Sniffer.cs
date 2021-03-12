@@ -154,7 +154,6 @@ namespace Inveigh
                         {
                             sourceIPAddress = (snifferEndPoint as IPEndPoint).Address;
                             //protocolNumber = (int)snifferSocket.ProtocolType;
-
                             if (String.Equals(protocol, "UDP"))
                             {
                                 protocolNumber = 17;
@@ -192,7 +191,7 @@ namespace Inveigh
 
                                         lock (Program.outputList)
                                         {
-                                            Program.outputList.Add(String.Format("[-] [{0}] TCP({1}) SYN packet from {2}", DateTime.Now.ToString("s"), tcpDestinationPortNumber, tcpSession));
+                                            Program.outputList.Add(String.Format("[.] [{0}] TCP({1}) SYN packet from {2}", DateTime.Now.ToString("s"), tcpDestinationPortNumber, tcpSession));
                                         }
 
                                     }
