@@ -71,7 +71,7 @@ namespace Inveigh
         public static string argFilePrefix = "Inveigh";
 
         public static string argChallenge = "";
-        public static string argConsole = "2";
+        public static string argConsole = "3";
         public static string argConsoleQueueLimit = "-1";
         public static string argConsoleStatus = "0";
         public static string argConsoleUnique = "Y";
@@ -158,11 +158,11 @@ namespace Inveigh
         public static string dnsDomain = "";
         public static IPAddress dnsServerAddress;
         public static FileStream pcapFile = null;
-
+       
         static void Main(string[] args)
         {           
             //end parameters
-            string version = "0.92 Dev 3";          
+            string version = "0.92 Dev 4";          
             string wpadDNSDomainIsHostsDirect = "";
             string wpadSHExpMatchHostsDirect = "";
             string wpadSHExpMatchURLsDirect = "";
@@ -1139,6 +1139,11 @@ namespace Inveigh
             else if (runTime > 1) outputList.Add(String.Format("[+] Run Time = {0} Minutes", runTime));
             outputList.Add(String.Format("[*] Press ESC to access console"));
 
+            //byte[] pfxData = File.ReadAllBytes("c:\\users\\dev\\desktop\\cert.pfx");
+            //string test = Convert.ToBase64String(pfxData);
+            
+            //Console.WriteLine(test);
+
             if (enabledElevated && (enabledDHCPv6 || enabledLLMNRv6|| enabledDNS || enabledMDNS || enabledLLMNR || enabledNBNS || enabledSMB))
             {
 
@@ -1223,6 +1228,12 @@ namespace Inveigh
 
             if (enabledHTTP)
             {
+                Thread httpsListenerThread = new Thread(() => HTTP.HTTPListener("HTTPS", "IPv4", argHTTPIP, "443"));
+                httpsListenerThread.Start();
+
+                Thread httpsIPv6ListenerThread = new Thread(() => HTTP.HTTPListener("HTTPS", "IPv6", argHTTPIP, "443"));
+                httpsIPv6ListenerThread.Start();
+
                 Thread httpListenerThread = new Thread(() => HTTP.HTTPListener("HTTP", "IPv4", argHTTPIP, argHTTPPort));
                 httpListenerThread.Start();
 

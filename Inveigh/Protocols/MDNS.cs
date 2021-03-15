@@ -152,7 +152,7 @@ namespace Inveigh
                 IP = Program.argIPv6;
             }
 
-            byte[] spooferIPData = Program.spooferIPData; // todo add aaaa
+            byte[] spooferIPData = Program.spooferIPData;
             MemoryStream memoryStream = new MemoryStream();
 
             if(String.Equals(method, "sniffer"))

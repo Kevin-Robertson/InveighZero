@@ -130,7 +130,11 @@ namespace Inveigh
 
                 case "00-10":
                     type = "TXT";
-                    break;               
+                    break;
+
+                case "00-FF":
+                    type = "ANY";
+                    break;
 
             }
 

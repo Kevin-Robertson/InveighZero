@@ -259,17 +259,17 @@ namespace Inveigh
                     while (Program.outputList.Count > 0)
                     {
 
-                        if (Program.console == 3 && (Program.outputList[0].StartsWith("[+]") || Program.outputList[0].StartsWith("[*]") || Program.outputList[0].StartsWith("[.]") || Program.outputList[0].StartsWith("[!]") || Program.outputList[0].StartsWith("[-]") || Program.outputList[0].StartsWith("[not unique]")))
+                        if (Program.console == 3 && (Program.outputList[0].StartsWith("[+]") || Program.outputList[0].StartsWith("[*]") || Program.outputList[0].StartsWith("[.]") || Program.outputList[0].StartsWith("[!]") || Program.outputList[0].StartsWith("[-]") || Program.outputList[0].StartsWith("[not unique]") || !Program.outputList[0].StartsWith("[")))
                         {
                             Program.consoleList.Add(Program.outputList[0]);
                         }
 
-                        if (Program.console == 2 && !Program.outputList[0].Contains(" disabled]"))
+                        if (Program.console == 2 && (!Program.outputList[0].Contains(" disabled]") || !Program.outputList[0].StartsWith("[")))
                         {
                             Program.consoleList.Add(Program.outputList[0]);
                         }
 
-                        if (Program.console == 1 && (Program.outputList[0].StartsWith("[+]") || !Program.outputList[0].StartsWith("[") || Program.outputList[0].StartsWith("[not unique]")))
+                        if (Program.console == 1 && (Program.outputList[0].StartsWith("[+]") || !Program.outputList[0].StartsWith("[") || Program.outputList[0].StartsWith("[not unique]") || !Program.outputList[0].StartsWith("[")))
                         {
                             Program.consoleList.Add(Program.outputList[0]);
                         }

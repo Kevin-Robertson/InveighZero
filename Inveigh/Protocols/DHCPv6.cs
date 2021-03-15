@@ -407,7 +407,7 @@ namespace Inveigh
                 }
                 else if (!responseMessage.EndsWith(" list") && !responseMessage.EndsWith(" capture") && !String.Equals(responseMessage,"local request"))
                 {
-                    Program.outputList.Add(String.Format("[{0}] [{1}] DHCPv6 client MAC {2}", responseStatus, DateTime.Now.ToString("s"), clientMAC));
+                    Program.outputList.Add(String.Format("[{0}] [{1}] DHCPv6 client MAC {2} {3}", responseStatus, DateTime.Now.ToString("s"), clientMAC, responseMessage)); // todo better way to filter?
                 }
 
             }

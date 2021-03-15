@@ -153,7 +153,7 @@ namespace Inveigh
                         else
                         {
                             sourceIPAddress = (snifferEndPoint as IPEndPoint).Address;
-                            //protocolNumber = (int)snifferSocket.ProtocolType;
+
                             if (String.Equals(protocol, "UDP"))
                             {
                                 protocolNumber = 17;
