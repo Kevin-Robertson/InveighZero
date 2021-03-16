@@ -53,6 +53,7 @@ namespace Inveigh
             int sourcePortNumber = 0;
             string sourceIP = "";
             string responseStatus = "-";
+            bool enabled = Program.enabledDNS;
 
             if (String.Equals(method, "sniffer"))
             {
@@ -66,11 +67,9 @@ namespace Inveigh
                 sourceIP = sourceIPAddress.ToString();
             }
 
-            string IP = Program.argIP;
-
             if (String.Equals(ipVersion, "IPv6"))
             {
-                IP = Program.argIPv6;
+                enabled = Program.enabledDNSv6;
             }
 
             string requestHost = Util.ParseNameQuery(12, payload);
@@ -79,7 +78,7 @@ namespace Inveigh
             byte[] type = new byte[2];
             Buffer.BlockCopy(payload, (request.Length + 12), type, 0, 2);
             string typeName = Util.GetRecordType(type);
-            string responseMessage = Util.CheckRequest("DNS", requestHost, sourceIP, Program.argIP, typeName, Program.argDNSTypes, Program.enabledDNS);
+            string responseMessage = Util.CheckRequest("DNS", requestHost, sourceIP, Program.argIP, typeName, Program.argDNSTypes, enabled);
 
             if (Program.enabledDNS && String.Equals(responseMessage, "response sent"))
             {
@@ -91,7 +90,7 @@ namespace Inveigh
             {
                 byte[] serverResponse = DNSRelay(method, ipVersion, typeName, sourceIPAddress, payload, sourcePortData, ref responseMessage);
 
-                if (serverResponse != null && serverResponse.Length > 0)
+                if (!Util.ArrayIsNullOrEmpty(serverResponse))
                 {
                     responseStatus = "+";
                     DNSClient(method, ipVersion, sourceIPAddress, sourcePortNumber, serverResponse, udpClient);
@@ -154,7 +153,7 @@ namespace Inveigh
                 response = DNS.GetDNSResponse(method, ipVersion, Program.argDNSHost, typeName, sourceIPAddress, sourcePortData, payload);
                 message = "response sent";
             }
-            else if (String.Equals(method, "sniffer") && relay != null && relay.Length > 0)
+            else if (String.Equals(method, "sniffer") && !Util.ArrayIsNullOrEmpty(relay))
             {
                 MemoryStream memoryStream = new MemoryStream();
                 memoryStream.Write((new byte[2] { 0x00, 0x35 }), 0, 2);

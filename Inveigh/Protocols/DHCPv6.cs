@@ -323,11 +323,11 @@ namespace Inveigh
             {
                 responseMessage = "inspect only";
             }
-            else if (Program.argSpooferMACsIgnore != null && Program.argSpooferMACsIgnore.Length > 0 && (Array.Exists(Program.argSpooferMACsIgnore, element => element == clientMAC.Replace(":",""))))
+            else if (!Util.ArrayIsNullOrEmpty(Program.argSpooferMACsIgnore) && (Array.Exists(Program.argSpooferMACsIgnore, element => element == clientMAC.Replace(":",""))))
             {
                 responseMessage = String.Concat(clientMAC, " is on ignore list");
             }
-            else if (Program.argSpooferMACsReply != null && Program.argSpooferMACsReply.Length > 0 && (!Array.Exists(Program.argSpooferMACsReply, element => element == clientMAC.Replace(":", ""))))
+            else if (!Util.ArrayIsNullOrEmpty(Program.argSpooferMACsReply) && (!Array.Exists(Program.argSpooferMACsReply, element => element == clientMAC.Replace(":", ""))))
             {
                 responseMessage = String.Concat(clientMAC, " not on reply list");
             }
@@ -345,7 +345,7 @@ namespace Inveigh
             }
             else if (!Program.enabledDHCPv6 && messageTypeID == 1)
             {
-                responseMessage = "spoofer disabled";
+                responseMessage = "disabled";
             }
             else if (vendorIndex < 0)
             {

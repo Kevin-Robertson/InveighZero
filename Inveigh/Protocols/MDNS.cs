@@ -86,7 +86,7 @@ namespace Inveigh
             if (!String.Equals(BitConverter.ToString(questions), "00-00"))
             {
 
-                if (requestSplit != null && requestSplit.Length > 0)
+                if (!Util.ArrayIsNullOrEmpty(requestSplit))
                 {
                     mdnsResponseMessage = Util.CheckRequest("MDNS", requestSplit[0], sourceIP, IP, typeName, Program.argMDNSTypes, enabled);
                 }

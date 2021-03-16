@@ -69,7 +69,6 @@ namespace Inveigh
         public static string[] argSpooferMACsReply;
         public static string argFileOutputDirectory = Directory.GetCurrentDirectory();
         public static string argFilePrefix = "Inveigh";
-
         public static string argChallenge = "";
         public static string argConsole = "3";
         public static string argConsoleQueueLimit = "-1";
@@ -654,8 +653,8 @@ namespace Inveigh
             r = new Regex("^[A-Fa-f0-9]{12}$"); if (!String.IsNullOrEmpty(argMAC) && !r.IsMatch(argMAC)) { Console.WriteLine("MAC address is invalid"); Environment.Exit(0); }
             if ((argDNSTypes.Contains("SOA") || argDNSTypes.Contains("SRV")) && (String.IsNullOrEmpty(argDNSHost) || argDNSHost.Split('.').Count() < 3)) { Console.WriteLine("DNSHost must be specified and fully qualified when using DNSTypes SOA or SRV"); Environment.Exit(0); }
             if (String.Equals(argFileOutput, "Y") && !Directory.Exists(argFileOutputDirectory)) { Console.WriteLine("FileOutputDirectory is invalid"); Environment.Exit(0); }
-            if (argPcapTCP != null && argPcapTCP.Length > 0) { foreach (string port in argPcapTCP) { if (!String.Equals(port, "ALL")) { try { Int32.Parse(port); } catch { Console.WriteLine("PcapPortTCP values must be an integer"); Environment.Exit(0); } } } }
-            if (argPcapUDP != null && argPcapUDP.Length > 0) { foreach (string port in argPcapUDP) { if (!String.Equals(port, "ALL")) { try { Int32.Parse(port); } catch { Console.WriteLine("PcapPortUDP values must be an integer"); Environment.Exit(0); } } } }
+            if (!Util.ArrayIsNullOrEmpty(argPcapTCP)) { foreach (string port in argPcapTCP) { if (!String.Equals(port, "ALL")) { try { Int32.Parse(port); } catch { Console.WriteLine("PcapPortTCP values must be an integer"); Environment.Exit(0); } } } }
+            if (!Util.ArrayIsNullOrEmpty(argPcapUDP)) { foreach (string port in argPcapUDP) { if (!String.Equals(port, "ALL")) { try { Int32.Parse(port); } catch { Console.WriteLine("PcapPortUDP values must be an integer"); Environment.Exit(0); } } } }
             console = Int32.Parse(argConsole);
             consoleQueueLimit = Int32.Parse(argConsoleQueueLimit);
             consoleStatus = Int32.Parse(argConsoleStatus);
@@ -886,7 +885,7 @@ namespace Inveigh
 
             }
 
-            if (argWPADdnsDomainIsHostsDirect != null && argWPADdnsDomainIsHostsDirect.Length > 0)
+            if (!Util.ArrayIsNullOrEmpty(argWPADdnsDomainIsHostsDirect))
             {
                 int i = 0;
 
@@ -901,7 +900,7 @@ namespace Inveigh
                 wpadDNSDomainIsHostsDirect = String.Concat("if (", wpadDNSDomainIsHostsDirect, ") return \"DIRECT\";");
             }
 
-            if (argWPADshExpMatchHostsDirect != null && argWPADshExpMatchHostsDirect.Length > 0)
+            if (!Util.ArrayIsNullOrEmpty(argWPADshExpMatchHostsDirect))
             {
                 int i = 0;
 
@@ -916,7 +915,7 @@ namespace Inveigh
                 wpadSHExpMatchHostsDirect = String.Concat("if (", wpadSHExpMatchHostsDirect, ") return \"DIRECT\";");
             }
 
-            if (argWPADshExpMatchURLsDirect != null && argWPADshExpMatchURLsDirect.Length > 0)
+            if (!Util.ArrayIsNullOrEmpty(argWPADshExpMatchURLsDirect))
             {
                 int i = 0;
 
@@ -931,7 +930,7 @@ namespace Inveigh
                 wpadSHExpMatchURLsDirect = String.Concat("if (", wpadSHExpMatchURLsDirect, ") return \"DIRECT\";");
             }
 
-            if (argWPADdnsDomainIsHostsProxy != null && argWPADdnsDomainIsHostsProxy.Length > 0)
+            if (!Util.ArrayIsNullOrEmpty(argWPADdnsDomainIsHostsProxy))
             {
                 int i = 0;
 
@@ -946,7 +945,7 @@ namespace Inveigh
                 wpadDNSDomainIsHostsProxy = String.Concat("if (", wpadDNSDomainIsHostsProxy, ") ");
             }
 
-            if (argWPADshExpMatchHostsProxy != null && argWPADshExpMatchHostsProxy.Length > 0)
+            if (!Util.ArrayIsNullOrEmpty(argWPADshExpMatchHostsProxy))
             {
                 int i = 0;
 
@@ -961,7 +960,7 @@ namespace Inveigh
                 wpadSHExpMatchHostsProxy = String.Concat("if (", wpadSHExpMatchHostsProxy, ") ");
             }
 
-            if (argWPADshExpMatchURLsProxy != null && argWPADshExpMatchURLsProxy.Length > 0)
+            if (!Util.ArrayIsNullOrEmpty(argWPADshExpMatchURLsProxy))
             {
                 int i = 0;
 
@@ -997,14 +996,14 @@ namespace Inveigh
             outputList.Add(String.Format("[+] Spoofer IP Address = {0}", argSpooferIP));
             if (!String.IsNullOrEmpty(argSpooferIPv6)) outputList.Add(String.Format("[+] Spoofer IPv6 Address = {0}", argSpooferIPv6));
             if (!String.IsNullOrEmpty(argMAC)) outputList.Add(String.Format("[+] Spoofer MAC Address = {0}", argMAC));
-            if (argSpooferDomainsIgnore != null) outputList.Add(String.Format("[+] Spoofer Domain Ignore = {0}", String.Join(",", argSpooferDomainsIgnore)));
-            if (argSpooferDomainsReply != null) outputList.Add(String.Format("[+] Spoofer Domains Reply = {0}", String.Join(",", argSpooferDomainsReply)));
-            if (argSpooferHostsIgnore != null) outputList.Add(String.Format("[+] Spoofer Hosts Ignore = {0}", String.Join(",", argSpooferHostsIgnore)));
-            if (argSpooferHostsReply != null) outputList.Add(String.Format("[+] Spoofer Hosts Reply = {0}", String.Join(",", argSpooferHostsReply)));
-            if (argSpooferIPsIgnore != null) outputList.Add(String.Format("[+] Spoofer IPs Ignore = {0}", String.Join(",", argSpooferIPsIgnore)));
-            if (argSpooferIPsReply != null) outputList.Add(String.Format("[+] Spoofer IPs Reply = {0}", String.Join(",", argSpooferIPsReply)));
-            if (argSpooferMACsIgnore != null) outputList.Add(String.Format("[+] Spoofer MACs Ignore = {0}", String.Join(",", argSpooferMACsIgnore)));
-            if (argSpooferMACsReply != null) outputList.Add(String.Format("[+] Spoofer MACs Reply = {0}", String.Join(",", argSpooferMACsReply)));
+            if (!Util.ArrayIsNullOrEmpty(argSpooferDomainsIgnore)) outputList.Add(String.Format("[+] Spoofer Domain Ignore = {0}", String.Join(",", argSpooferDomainsIgnore)));
+            if (!Util.ArrayIsNullOrEmpty(argSpooferDomainsReply)) outputList.Add(String.Format("[+] Spoofer Domains Reply = {0}", String.Join(",", argSpooferDomainsReply)));
+            if (!Util.ArrayIsNullOrEmpty(argSpooferHostsIgnore)) outputList.Add(String.Format("[+] Spoofer Hosts Ignore = {0}", String.Join(",", argSpooferHostsIgnore)));
+            if (!Util.ArrayIsNullOrEmpty(argSpooferHostsReply)) outputList.Add(String.Format("[+] Spoofer Hosts Reply = {0}", String.Join(",", argSpooferHostsReply)));
+            if (!Util.ArrayIsNullOrEmpty(argSpooferIPsIgnore)) outputList.Add(String.Format("[+] Spoofer IPs Ignore = {0}", String.Join(",", argSpooferIPsIgnore)));
+            if (!Util.ArrayIsNullOrEmpty(argSpooferIPsReply)) outputList.Add(String.Format("[+] Spoofer IPs Reply = {0}", String.Join(",", argSpooferIPsReply)));
+            if (!Util.ArrayIsNullOrEmpty(argSpooferMACsIgnore)) outputList.Add(String.Format("[+] Spoofer MACs Ignore = {0}", String.Join(",", argSpooferMACsIgnore)));
+            if (!Util.ArrayIsNullOrEmpty(argSpooferMACsReply)) outputList.Add(String.Format("[+] Spoofer MACs Reply = {0}", String.Join(",", argSpooferMACsReply)));
             if (enabledElevated) optionStatus = "Enabled";
             else optionStatus = "Disabled";
             outputList.Add(String.Format("[+] Packet Sniffer = {0}", optionStatus));
@@ -1069,6 +1068,14 @@ namespace Inveigh
             }
             else outputList.Add(String.Format("[+] mDNS Spoofer = Disabled"));
 
+            if (enabledMDNSv6)
+            {
+                if (String.Equals(argMDNSUnicast, "Y")) optionStatus = "Unicast Reply Only ";
+                else optionStatus = "";
+                outputList.Add(String.Format("[+] mDNSv6({0}) {1}Spoofer For Types {2} = Enabled", String.Join(",", argMDNSQuestions), optionStatus, String.Join(",", argMDNSTypes)));
+            }
+            else outputList.Add(String.Format("[+] mDNSv6 Spoofer = Disabled"));
+
             if (enabledNBNS)
             {
                 outputList.Add(String.Format("[+] NBNS Spoofer For Types {0} = Enabled", String.Join(",", argNBNSTypes)));
@@ -1092,8 +1099,8 @@ namespace Inveigh
 
             if (enabledProxy)
             {
-                if (argPcapTCP != null && argPcapTCP.Length > 0) outputList.Add(String.Format("[+] Pcap TCP Ports = {0}", String.Join(",", argPcapTCP)));
-                if (argPcapUDP != null && argPcapUDP.Length > 0) outputList.Add(String.Format("[+] Pcap UDP Ports = {0}", String.Join(",", argPcapUDP)));
+                if (!Util.ArrayIsNullOrEmpty(argPcapTCP)) outputList.Add(String.Format("[+] Pcap TCP Ports = {0}", String.Join(",", argPcapTCP)));
+                if (!Util.ArrayIsNullOrEmpty(argPcapUDP)) outputList.Add(String.Format("[+] Pcap UDP Ports = {0}", String.Join(",", argPcapUDP)));
             }
 
             if (enabledProxy) optionStatus = "Enabled";
@@ -1108,7 +1115,7 @@ namespace Inveigh
 
             outputList.Add(String.Format("[+] WPAD Authentication = {0}", argWPADAuth));
             if (argWPADAuth.StartsWith("NTLM")) outputList.Add(String.Format("[+] WPAD NTLM Authentication Ignore List = {0}", String.Join(",", argWPADAuthIgnore)));
-            //if (argWPADDirectHosts != null) outputList.Add(String.Format("[+] WPAD Direct Hosts = {0}", String.Join(",", argWPADDirectHosts)));
+            //if (!Util.ArrayIsNullOrEmpty(argWPADDirectHosts)) outputList.Add(String.Format("[+] WPAD Direct Hosts = {0}", String.Join(",", argWPADDirectHosts))); // todo check
             if (!String.IsNullOrEmpty(argWPADIP)) outputList.Add(String.Format("[+] WPAD IP = {0}", argWPADIP));
             if (!String.IsNullOrEmpty(argWPADPort)) outputList.Add(String.Format("[+] WPAD Port = {0}", argWPADPort));
             if (enabledSMB) optionStatus = "Enabled";
@@ -1138,11 +1145,6 @@ namespace Inveigh
             if (runTime == 1) outputList.Add(String.Format("[+] Run Time = {0} Minute", runTime));
             else if (runTime > 1) outputList.Add(String.Format("[+] Run Time = {0} Minutes", runTime));
             outputList.Add(String.Format("[*] Press ESC to access console"));
-
-            //byte[] pfxData = File.ReadAllBytes("c:\\users\\dev\\desktop\\cert.pfx");
-            //string test = Convert.ToBase64String(pfxData);
-            
-            //Console.WriteLine(test);
 
             if (enabledElevated && (enabledDHCPv6 || enabledLLMNRv6|| enabledDNS || enabledMDNS || enabledLLMNR || enabledNBNS || enabledSMB))
             {
@@ -1393,7 +1395,7 @@ namespace Inveigh
                             {
                                 string[] inputArray = inputCommand.Split(' ');
 
-                                if (inputArray != null && inputArray.Length == 3)
+                                if (!Util.ArrayIsNullOrEmpty(inputArray) && inputArray.Length == 3)
                                 {
 
                                     switch (inputArray[1])

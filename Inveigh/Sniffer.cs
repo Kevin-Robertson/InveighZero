@@ -218,7 +218,7 @@ namespace Inveigh
                                             break;
                                     }
 
-                                    if (Program.enabledPcap && String.Equals(ipVersion, "IPv4") && (Program.argPcapTCP != null && Program.argPcapTCP.Length > 0 && (Array.Exists(Program.argPcapTCP, element => element == tcpSourcePort) ||
+                                    if (Program.enabledPcap && String.Equals(ipVersion, "IPv4") && (!Util.ArrayIsNullOrEmpty(Program.argPcapTCP) && (Array.Exists(Program.argPcapTCP, element => element == tcpSourcePort) ||
                                         Array.Exists(Program.argPcapTCP, element => element == tcpDestinationPort) || Array.Exists(Program.argPcapTCP, element => element == "ALL"))))
                                     {
                                         PcapOutput((uint)packetLength, snifferData);
@@ -281,7 +281,7 @@ namespace Inveigh
                                         break;
                                 }
 
-                                if (Program.enabledPcap && String.Equals(ipVersion, "IPv4") && (Program.argPcapUDP != null && Program.argPcapUDP.Length > 0 && (Array.Exists(Program.argPcapUDP, element => element == udpSourcePort) ||
+                                if (Program.enabledPcap && String.Equals(ipVersion, "IPv4") && (!Util.ArrayIsNullOrEmpty(Program.argPcapUDP) && (Array.Exists(Program.argPcapUDP, element => element == udpSourcePort) ||
                                    Array.Exists(Program.argPcapUDP, element => element == udpSourcePortNumber.ToString()) || Array.Exists(Program.argPcapUDP, element => element == "ALL"))))
                                 {
                                     PcapOutput((uint)packetLength, snifferData);
@@ -306,7 +306,7 @@ namespace Inveigh
         public static void PcapOutput(uint totalLength, byte[] byteData)
         {
 
-            if (byteData != null && byteData.Length > 0)
+            if (!Util.ArrayIsNullOrEmpty(byteData))
             {
                 TimeSpan pcapEpochTime = DateTime.UtcNow - new DateTime(1970, 1, 1);
                 byte[] pcapLength = BitConverter.GetBytes(totalLength + 14);

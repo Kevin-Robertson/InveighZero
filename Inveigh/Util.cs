@@ -85,6 +85,11 @@ namespace Inveigh
             return data.Skip(2).ToArray();
         }
 
+        public static bool ArrayIsNullOrEmpty(Array array)
+        {
+            return (array == null || array.Length == 0);
+        }
+
         public static string GetRecordType(byte[] data)
         {
             string type = "";
@@ -249,7 +254,7 @@ namespace Inveigh
 
             }
 
-            if (String.Equals(type, "DNS") && request.Contains(".") && Program.argSpooferDomainsIgnore != null)
+            if (String.Equals(type, "DNS") && request.Contains(".") && !Util.ArrayIsNullOrEmpty(Program.argSpooferDomainsIgnore))
             {
                 
                 foreach (string domain in Program.argSpooferDomainsIgnore)
@@ -265,7 +270,7 @@ namespace Inveigh
 
             }
 
-            if (String.Equals(type, "DNS") && request.Contains(".") && Program.argSpooferDomainsReply != null)
+            if (String.Equals(type, "DNS") && request.Contains(".") && !Util.ArrayIsNullOrEmpty(Program.argSpooferDomainsReply))
             {
 
                 foreach (string domain in Program.argSpooferDomainsReply)
@@ -286,53 +291,53 @@ namespace Inveigh
             }
             else if ((!String.Equals(type, "DNS") && !enabled))
             {
-                responseMessage = "spoofer disabled";
+                responseMessage = "disabled";
             }
             else if ((String.Equals(type, "DNS") && !enabled && !String.Equals(sourceIP, mainIP)))
             {
-                responseMessage = "spoofer disabled";
+                responseMessage = "disabled";
             }
             else if(String.Equals(requestType[0], "MATCH") && String.Equals(type, "IPv4") && String.Equals(requestType, "AAAA") || String.Equals(type, "IPv6") && !String.Equals(requestType, "AAAA"))
             {
-                responseMessage = String.Concat(requestType, " type ignored");
+                responseMessage = String.Concat(requestType, " requests ignored");
             }      
-            else if (recordTypes != null && recordTypes.Length > 0 && (!Array.Exists(recordTypes, element => element == requestType.ToUpper())))
+            else if (!Util.ArrayIsNullOrEmpty(recordTypes) && (!Array.Exists(recordTypes, element => element == requestType.ToUpper())))
             {
-                responseMessage = String.Concat(requestType, " replies disabled");
+                responseMessage = String.Concat(requestType, " request ignored");
             }
-            else if (Program.argSpooferHostsIgnore != null && Program.argSpooferHostsIgnore.Length > 0 && (Array.Exists(Program.argSpooferHostsIgnore, element => element == request.ToUpper()) ||
+            else if (!Util.ArrayIsNullOrEmpty(Program.argSpooferHostsIgnore) && (Array.Exists(Program.argSpooferHostsIgnore, element => element == request.ToUpper()) ||
                 (Array.Exists(Program.argSpooferHostsIgnore, element => element == nameRequestHost.ToUpper()))))
             {
-                responseMessage = String.Concat(request, " is on ignore list");
+                responseMessage = String.Concat("host ignored");
             }
-            else if (Program.argSpooferHostsReply != null && Program.argSpooferHostsReply.Length > 0 && (!Array.Exists(Program.argSpooferHostsReply, element => element == request.ToUpper()) &&
+            else if (!Util.ArrayIsNullOrEmpty(Program.argSpooferHostsReply) && (!Array.Exists(Program.argSpooferHostsReply, element => element == request.ToUpper()) &&
                 (!Array.Exists(Program.argSpooferHostsReply, element => element == nameRequestHost.ToUpper()))))
             {
-                responseMessage = String.Concat(request, " not on reply list");
+                responseMessage = String.Concat("host ignored");
             }
-            else if (Program.argSpooferIPsIgnore != null && Array.Exists(Program.argSpooferIPsIgnore, element => element == sourceIP))
+            else if (!Util.ArrayIsNullOrEmpty(Program.argSpooferIPsIgnore) && Array.Exists(Program.argSpooferIPsIgnore, element => element == sourceIP))
             {
-                responseMessage = String.Concat(sourceIP, " is on ignore list");
+                responseMessage = String.Concat("IP ignored");
             }
-            else if (Program.argSpooferIPsReply != null && !Array.Exists(Program.argSpooferIPsReply, element => element == sourceIP))
+            else if (!Util.ArrayIsNullOrEmpty(Program.argSpooferIPsReply) && !Array.Exists(Program.argSpooferIPsReply, element => element == sourceIP))
             {
-                responseMessage = String.Concat(sourceIP, " not on reply list");
+                responseMessage = String.Concat("IP ignored");
             }
             else if(String.Equals(type, "NBNS") && String.Equals(sourceIP, mainIP))
             {
-                responseMessage = "local query";
+                responseMessage = "local query ignored";
             }
             else if(String.Equals(type, "DNS") && domainIgnoreMatch)
             {
-                responseMessage = String.Concat(domainIgnore, " is on ignore list");
+                responseMessage = String.Concat("domain ignored");
             }
-            else if (String.Equals(type, "DNS") && Program.argSpooferDomainsReply != null && !domainReplyMatch)
+            else if (String.Equals(type, "DNS") && !Util.ArrayIsNullOrEmpty(Program.argSpooferDomainsReply) && !domainReplyMatch)
             {
-                responseMessage = "domain not on reply list";
+                responseMessage = "domain ignored";
             }
             else if (isRepeat)
             {
-                responseMessage = String.Concat("previous ", sourceIP, " capture");
+                responseMessage = String.Concat("previous capture");
             }
             else if (String.Equals(sourceIP, mainIP))
             {
