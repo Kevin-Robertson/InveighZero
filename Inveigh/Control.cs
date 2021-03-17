@@ -14,126 +14,135 @@ namespace Inveigh
             while (true)
             {
 
-                if (Program.logFileList.Count > 0)
+                try
                 {
 
-                    using (StreamWriter outputFileLog = new StreamWriter(Path.Combine(directory, String.Concat(prefix, "-Log.txt")), true))
+                    if (Program.logFileList.Count > 0)
                     {
-                        outputFileLog.WriteLine(Program.logFileList[0]);
-                        outputFileLog.Close();
 
-                        lock (Program.logFileList)
+                        using (StreamWriter outputFileLog = new StreamWriter(Path.Combine(directory, String.Concat(prefix, "-Log.txt")), true))
                         {
-                            Program.logFileList.RemoveAt(0);
+                            outputFileLog.WriteLine(Program.logFileList[0]);
+                            outputFileLog.Close();
+
+                            lock (Program.logFileList)
+                            {
+                                Program.logFileList.RemoveAt(0);
+                            }
+
+                        }
+
+                    }
+
+                    if (Program.cleartextFileList.Count > 0)
+                    {
+
+                        using (StreamWriter outputFileCleartext = new StreamWriter(Path.Combine(directory, String.Concat(prefix, "-Cleartext.txt")), true))
+                        {
+                            outputFileCleartext.WriteLine(Program.cleartextFileList[0]);
+                            outputFileCleartext.Close();
+
+                            lock (Program.cleartextFileList)
+                            {
+                                Program.cleartextFileList.RemoveAt(0);
+                            }
+
+                        }
+
+                    }
+
+                    if (Program.ntlmv1FileList.Count > 0)
+                    {
+
+                        using (StreamWriter outputFileNTLMv1 = new StreamWriter(Path.Combine(directory, String.Concat(prefix, "-NTLMv1.txt")), true))
+                        {
+                            outputFileNTLMv1.WriteLine(Program.ntlmv1FileList[0]);
+                            outputFileNTLMv1.Close();
+
+                            lock (Program.ntlmv1FileList)
+                            {
+                                Program.ntlmv1FileList.RemoveAt(0);
+                            }
+
+                        }
+
+                    }
+
+                    if (Program.ntlmv2FileList.Count > 0)
+                    {
+
+                        using (StreamWriter outputFileNTLMv2 = new StreamWriter(Path.Combine(directory, String.Concat(prefix, "-NTLMv2.txt")), true))
+                        {
+                            outputFileNTLMv2.WriteLine(Program.ntlmv2FileList[0]);
+                            outputFileNTLMv2.Close();
+
+                            lock (Program.ntlmv2FileList)
+                            {
+                                Program.ntlmv2FileList.RemoveAt(0);
+                            }
+
+                        }
+
+                    }
+
+                    if (Program.ntlmv1UsernameFileList.Count > 0)
+                    {
+
+                        using (StreamWriter outputUsernameFileNTLMv1 = new StreamWriter(Path.Combine(directory, String.Concat(prefix, "-NTLMv1Users.txt")), true))
+                        {
+                            outputUsernameFileNTLMv1.WriteLine(Program.ntlmv1UsernameFileList[0]);
+                            outputUsernameFileNTLMv1.Close();
+
+                            lock (Program.ntlmv1UsernameList)
+                            {
+                                Program.ntlmv1UsernameFileList.RemoveAt(0);
+                            }
+
+                        }
+
+                    }
+
+                    if (Program.ntlmv2UsernameFileList.Count > 0)
+                    {
+
+                        using (StreamWriter outputUsernameFileNTLMv2 = new StreamWriter(Path.Combine(directory, String.Concat(prefix, "-NTLMv2Users.txt")), true))
+                        {
+                            outputUsernameFileNTLMv2.WriteLine(Program.ntlmv2UsernameFileList[0]);
+                            outputUsernameFileNTLMv2.Close();
+
+                            lock (Program.ntlmv2UsernameFileList)
+                            {
+                                Program.ntlmv2UsernameFileList.RemoveAt(0);
+                            }
+
+                        }
+
+                    }
+
+                    if (Program.hostFileList.Count > 0)
+                    {
+
+                        using (StreamWriter outputDHCPv6File = new StreamWriter(Path.Combine(directory, String.Concat(prefix, "-DHCPv6.txt")), true))
+                        {
+                            outputDHCPv6File.WriteLine(Program.hostFileList[0]);
+                            outputDHCPv6File.Close();
+
+                            lock (Program.hostFileList)
+                            {
+                                Program.hostFileList.RemoveAt(0);
+                            }
+
                         }
 
                     }
 
                 }
-
-                if (Program.cleartextFileList.Count > 0)
+                catch (Exception ex)
                 {
-
-                    using (StreamWriter outputFileCleartext = new StreamWriter(Path.Combine(directory, String.Concat(prefix, "-Cleartext.txt")), true))
-                    {
-                        outputFileCleartext.WriteLine(Program.cleartextFileList[0]);
-                        outputFileCleartext.Close();
-
-                        lock (Program.cleartextFileList)
-                        {
-                            Program.cleartextFileList.RemoveAt(0);
-                        }
-
-                    }
-
+                    Program.outputList.Add(String.Format("[-] [{0}] File output error detected - {1}", DateTime.Now.ToString("s"), ex.Message));
                 }
 
-                if (Program.ntlmv1FileList.Count > 0)
-                {
-
-                    using (StreamWriter outputFileNTLMv1 = new StreamWriter(Path.Combine(directory, String.Concat(prefix, "-NTLMv1.txt")), true))
-                    {
-                        outputFileNTLMv1.WriteLine(Program.ntlmv1FileList[0]);
-                        outputFileNTLMv1.Close();
-
-                        lock (Program.ntlmv1FileList)
-                        {
-                            Program.ntlmv1FileList.RemoveAt(0);
-                        }
-
-                    }
-
-                }
-
-                if (Program.ntlmv2FileList.Count > 0)
-                {
-
-                    using (StreamWriter outputFileNTLMv2 = new StreamWriter(Path.Combine(directory, String.Concat(prefix, "-NTLMv2.txt")), true))
-                    {
-                        outputFileNTLMv2.WriteLine(Program.ntlmv2FileList[0]);
-                        outputFileNTLMv2.Close();
-
-                        lock (Program.ntlmv2FileList)
-                        {
-                            Program.ntlmv2FileList.RemoveAt(0);
-                        }
-
-                    }
-
-                }
-
-                if (Program.ntlmv1UsernameFileList.Count > 0)
-                {
-
-                    using (StreamWriter outputUsernameFileNTLMv1 = new StreamWriter(Path.Combine(directory, String.Concat(prefix, "-NTLMv1Users.txt")), true))
-                    {
-                        outputUsernameFileNTLMv1.WriteLine(Program.ntlmv1UsernameFileList[0]);
-                        outputUsernameFileNTLMv1.Close();
-
-                        lock (Program.ntlmv1UsernameList)
-                        {
-                            Program.ntlmv1UsernameFileList.RemoveAt(0);
-                        }
-
-                    }
-
-                }
-
-                if (Program.ntlmv2UsernameFileList.Count > 0)
-                {
-
-                    using (StreamWriter outputUsernameFileNTLMv2 = new StreamWriter(Path.Combine(directory, String.Concat(prefix, "-NTLMv2Users.txt")), true))
-                    {
-                        outputUsernameFileNTLMv2.WriteLine(Program.ntlmv2UsernameFileList[0]);
-                        outputUsernameFileNTLMv2.Close();
-
-                        lock (Program.ntlmv2UsernameFileList)
-                        {
-                            Program.ntlmv2UsernameFileList.RemoveAt(0);
-                        }
-
-                    }
-
-                }
-
-                if (Program.hostFileList.Count > 0)
-                {
-
-                    using (StreamWriter outputDHCPv6File = new StreamWriter(Path.Combine(directory, String.Concat(prefix, "-DHCPv6.txt")), true))
-                    {
-                        outputDHCPv6File.WriteLine(Program.hostFileList[0]);
-                        outputDHCPv6File.Close();
-
-                        lock (Program.hostFileList)
-                        {
-                            Program.hostFileList.RemoveAt(0);
-                        }
-
-                    }
-
-                }
-
-                Thread.Sleep(100);
+                Thread.Sleep(200);
             }
 
         }
@@ -168,6 +177,7 @@ namespace Inveigh
 
                     Thread.Sleep(5);
                 }
+
             } while (Program.consoleOutput && Console.ReadKey(true).Key != ConsoleKey.Escape);
 
         }

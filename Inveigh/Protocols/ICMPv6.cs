@@ -29,7 +29,7 @@ namespace Inveigh
                         icmpv6MemoryStream.Write((new byte[16] { 0x86, 0x00, 0x00, 0x00, 0x00, 0x08, 0x07, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }), 0, 16);
                         icmpv6MemoryStream.Write((new byte[8] { 0x19, 0x3, 0x00, 0x00, 0x00, 0x00, 0x07, 0x08 }), 0, 8);      
                         icmpv6MemoryStream.Write(Program.spooferIPv6Data, 0, Program.spooferIPv6Data.Length);
-                        responseMessage = " with DNS ";
+                        responseMessage = " with DNSv6 ";
 
                     }
 

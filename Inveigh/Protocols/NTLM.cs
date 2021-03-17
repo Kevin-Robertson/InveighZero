@@ -32,6 +32,7 @@ namespace Inveigh
             string domain = "";
             string user = "";
             string host = "";
+            string sessionTimestamp = "";
 
             if (String.IsNullOrEmpty(session))
             {
@@ -43,38 +44,45 @@ namespace Inveigh
                 int ntlmsspOffset = index / 2;
                 int lmLength = (int)Util.UInt16DataLength((ntlmsspOffset + 12), payload);
                 int lmOffset = (int)Util.UInt32DataLength((ntlmsspOffset + 16), payload);
-                byte[] lmPayload = new byte[lmLength];
-                Buffer.BlockCopy(payload, (ntlmsspOffset + lmOffset), lmPayload, 0, lmPayload.Length);
-                lmResponse = BitConverter.ToString(lmPayload).Replace("-", String.Empty);
+                byte[] lmData = new byte[lmLength];
+                Buffer.BlockCopy(payload, (ntlmsspOffset + lmOffset), lmData, 0, lmData.Length);
+                lmResponse = BitConverter.ToString(lmData).Replace("-", String.Empty);
                 ntlmLength = (int)Util.UInt16DataLength((ntlmsspOffset + 20), payload);
                 int ntlmOffset = (int)Util.UInt32DataLength((ntlmsspOffset + 24), payload);
-                byte[] ntlmPayload = new byte[ntlmLength];
-                Buffer.BlockCopy(payload, (ntlmsspOffset + ntlmOffset), ntlmPayload, 0, ntlmPayload.Length);
-                ntlmResponse = BitConverter.ToString(ntlmPayload).Replace("-", String.Empty);
+                byte[] ntlmData = new byte[ntlmLength];
+                Buffer.BlockCopy(payload, (ntlmsspOffset + ntlmOffset), ntlmData, 0, ntlmData.Length);
+                ntlmResponse = BitConverter.ToString(ntlmData).Replace("-", String.Empty);
                 int domainLength = (int)Util.UInt16DataLength((ntlmsspOffset + 28), payload);
                 int domainOffset = (int)Util.UInt32DataLength((ntlmsspOffset + 32), payload);
-                byte[] domainPayload = new byte[domainLength];
-                Buffer.BlockCopy(payload, (ntlmsspOffset + domainOffset), domainPayload, 0, domainPayload.Length);
+                byte[] domainData = new byte[domainLength];
+                Buffer.BlockCopy(payload, (ntlmsspOffset + domainOffset), domainData, 0, domainData.Length);
                 domain = Util.DataToString((ntlmsspOffset + domainOffset), domainLength, payload);
                 int userLength = (int)Util.UInt16DataLength((ntlmsspOffset + 36), payload);
                 int userOffset = (int)Util.UInt32DataLength((ntlmsspOffset + 40), payload);
-                byte[] userPayload = new byte[userLength];
-                Buffer.BlockCopy(payload, (ntlmsspOffset + userOffset), userPayload, 0, userPayload.Length);
+                byte[] userData = new byte[userLength];
+                Buffer.BlockCopy(payload, (ntlmsspOffset + userOffset), userData, 0, userData.Length);
                 user = Util.DataToString((ntlmsspOffset + userOffset), userLength, payload);
                 int hostLength = (int)Util.UInt16DataLength((ntlmsspOffset + 44), payload);
                 int hostOffset = (int)Util.UInt32DataLength((ntlmsspOffset + 48), payload);
-                byte[] hostPayload = new byte[hostLength];
-                Buffer.BlockCopy(payload, (ntlmsspOffset + hostOffset), hostPayload, 0, hostPayload.Length);
+                byte[] hostData = new byte[hostLength];
+                Buffer.BlockCopy(payload, (ntlmsspOffset + hostOffset), hostData, 0, hostData.Length);
                 host = Util.DataToString((ntlmsspOffset + hostOffset), hostLength, payload);
+
+                if (ntlmLength > 24)
+                {
+                    byte[] timestamp = new byte[8];
+                    Buffer.BlockCopy(payload, (ntlmsspOffset + ntlmOffset + 24), timestamp, 0, 8);
+                    sessionTimestamp = BitConverter.ToString(timestamp).Replace("-", String.Empty);
+                }
 
                 if (String.Equals(protocol, "SMB"))
                 {
 
-                    try
+                    if (Program.smbSessionTable.ContainsKey(session))
                     {
                         challenge = Program.smbSessionTable[session].ToString();
                     }
-                    catch
+                    else
                     {
                         challenge = "";
                     }
@@ -83,25 +91,17 @@ namespace Inveigh
                 else if (!String.Equals(protocol, "SMB"))
                 {
 
-                    try
+                    if (Program.httpSessionTable.ContainsKey(sessionTimestamp))
+                    {
+                        challenge = Program.httpSessionTable[sessionTimestamp].ToString();
+                    }
+                    else if (Program.httpSessionTable.ContainsKey(session))
                     {
                         challenge = Program.httpSessionTable[session].ToString();
                     }
-                    catch
+                    else
                     {
-
-                        try
-                        {
-                            //need better better method of tracking challenges when source port changes between challenge and response 
-                            int newSourcePort = Int32.Parse(sourcePort) - 1;
-                            string newSession = sourceIP + ":" + newSourcePort;
-                            challenge = Program.httpSessionTable[newSession].ToString();
-                        }
-                        catch
-                        {
-                            challenge = "";
-                        }
-
+                        challenge = "";
                     }
 
                 }

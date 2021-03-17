@@ -5,10 +5,6 @@ using System.Net;
 using System.Net.Sockets;
 using System.IO;
 using System.Threading;
-using System.Net.Security;
-using System.Security.Cryptography.X509Certificates;
-using System.Security.Cryptography;
-using System.Security.Authentication;
 
 namespace Inveigh
 {
@@ -122,6 +118,8 @@ namespace Inveigh
                     string httpNTLMStage = "";
                     httpReset++;
                     string[] httpMethods = { "GET", "HEAD", "OPTIONS", "CONNECT", "POST", "PROPFIND" };
+                    DateTime currentTime = DateTime.Now;
+                    byte[] timestamp = Encoding.UTF8.GetBytes(currentTime.ToString("R"));
 
                     while (httpStream.DataAvailable)
                     {
@@ -354,9 +352,6 @@ namespace Inveigh
                             message = Encoding.UTF8.GetBytes(Program.argHTTPResponse);
                         }
 
-                        DateTime currentTime = DateTime.Now;
-                        byte[] httpTimestamp = Encoding.UTF8.GetBytes(currentTime.ToString("R"));
-
                         if ((Program.argHTTPAuth.StartsWith("NTLM") && !String.Equals(rawURL, "/wpad.dat")) || (Program.argWPADAuth.StartsWith("NTLM") && String.Equals(rawURL, "/wpad.dat")))
                         {
                             headerAuthenticateData = Encoding.UTF8.GetBytes(authorizationNTLM);
@@ -385,7 +380,7 @@ namespace Inveigh
                             memoryStream.Write(headerServer, 0, headerServer.Length);
                             memoryStream.Write((new byte[2] { 0x0d, 0x0a }), 0, 2);
                             memoryStream.Write((new byte[6] { 0x44, 0x61, 0x74, 0x65, 0x3a, 0x20 }), 0, 6); // Date: 
-                            memoryStream.Write(httpTimestamp, 0, httpTimestamp.Length);
+                            memoryStream.Write(timestamp, 0, timestamp.Length);
                             memoryStream.Write((new byte[2] { 0x0d, 0x0a }), 0, 2);
 
                             if (!Util.ArrayIsNullOrEmpty(headerAuthenticate) && !Util.ArrayIsNullOrEmpty(headerAuthenticateData))
@@ -487,7 +482,7 @@ namespace Inveigh
 
         public static string GetNTLMChallengeBase64(string method, bool ntlmESS, string ipAddress, string sourcePort, string destinationPort)
         {
-            byte[] httpTimestamp = BitConverter.GetBytes(DateTime.Now.ToFileTime());
+            byte[] timestamp = BitConverter.GetBytes(DateTime.Now.ToFileTime());
             byte[] challengeData = new byte[8];
             string session = ipAddress + ":" + sourcePort;       
             string challenge = "";
@@ -527,55 +522,58 @@ namespace Inveigh
                 Program.outputList.Add(String.Format("[+] [{0}] {1}({2}) NTLM challenge {3} sent to {4}", DateTime.Now.ToString("s"), method, destinationPort, challenge, session));
             }
 
-            Program.httpSessionTable[session] = challenge;
-            byte[] httpNTLMNegotiationFlags = { 0x05, 0x82, 0x81, 0x0A };
+            string sessionTimestamp = BitConverter.ToString(timestamp).Replace("-", String.Empty);
+            Program.httpSessionTable[sessionTimestamp] = challenge;
+            Program.httpSessionTable[session] = challenge;          
+
+            byte[] ntlmNegotiationFlags = { 0x05, 0x82, 0x81, 0x0A };
 
             if (ntlmESS)
             {
-                httpNTLMNegotiationFlags[2] = 0x89;
+                ntlmNegotiationFlags[2] = 0x89;
             }
 
-            byte[] hostnameBytes = Encoding.Unicode.GetBytes(Program.computerName);
-            byte[] netbiosDomainBytes = Encoding.Unicode.GetBytes(Program.netbiosDomain);
-            byte[] dnsDomainBytes = Encoding.Unicode.GetBytes(Program.dnsDomain);
-            byte[] dnsHostnameBytes = Encoding.Unicode.GetBytes(Program.computerName);
-            byte[] hostnameLength = BitConverter.GetBytes(hostnameBytes.Length).Take(2).ToArray();
-            byte[] netbiosDomainLength = BitConverter.GetBytes(netbiosDomainBytes.Length).Take(2).ToArray(); ;
-            byte[] dnsDomainLength = BitConverter.GetBytes(dnsDomainBytes.Length).Take(2).ToArray(); ;
-            byte[] dnsHostnameLength = BitConverter.GetBytes(dnsHostnameBytes.Length).Take(2).ToArray(); ;
-            byte[] targetLength = BitConverter.GetBytes(hostnameBytes.Length + netbiosDomainBytes.Length + dnsDomainBytes.Length + dnsDomainBytes.Length + dnsHostnameBytes.Length + 36).Take(2).ToArray(); ;
-            byte[] targetOffset = BitConverter.GetBytes(netbiosDomainBytes.Length + 56);
+            byte[] hostnameData = Encoding.Unicode.GetBytes(Program.computerName);
+            byte[] netbiosDomainData = Encoding.Unicode.GetBytes(Program.netbiosDomain);
+            byte[] dnsDomainData = Encoding.Unicode.GetBytes(Program.dnsDomain);
+            byte[] dnsHostnameData = Encoding.Unicode.GetBytes(Program.computerName);
+            byte[] hostnameLength = BitConverter.GetBytes(hostnameData.Length).Take(2).ToArray();
+            byte[] netbiosDomainLength = BitConverter.GetBytes(netbiosDomainData.Length).Take(2).ToArray(); ;
+            byte[] dnsDomainLength = BitConverter.GetBytes(dnsDomainData.Length).Take(2).ToArray(); ;
+            byte[] dnsHostnameLength = BitConverter.GetBytes(dnsHostnameData.Length).Take(2).ToArray(); ;
+            byte[] targetLength = BitConverter.GetBytes(hostnameData.Length + netbiosDomainData.Length + dnsDomainData.Length + dnsDomainData.Length + dnsHostnameData.Length + 36).Take(2).ToArray(); ;
+            byte[] targetOffset = BitConverter.GetBytes(netbiosDomainData.Length + 56);
 
             MemoryStream ntlmMemoryStream = new MemoryStream();
             ntlmMemoryStream.Write((new byte[12] { 0x4e, 0x54, 0x4c, 0x4d, 0x53, 0x53, 0x50, 0x00, 0x02, 0x00, 0x00, 0x00 }), 0, 12); // NTLMSSP + 
             ntlmMemoryStream.Write(netbiosDomainLength, 0, 2);
             ntlmMemoryStream.Write(netbiosDomainLength, 0, 2);
             ntlmMemoryStream.Write((new byte[4] { 0x38, 0x00, 0x00, 0x00 }), 0, 4);
-            ntlmMemoryStream.Write(httpNTLMNegotiationFlags, 0, 4);
+            ntlmMemoryStream.Write(ntlmNegotiationFlags, 0, 4);
             ntlmMemoryStream.Write(challengeData, 0, challengeData.Length);
             ntlmMemoryStream.Write((new byte[8] { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }), 0, 8);
             ntlmMemoryStream.Write(targetLength, 0, 2);
             ntlmMemoryStream.Write(targetLength, 0, 2);
             ntlmMemoryStream.Write(targetOffset, 0, 4);
-            ntlmMemoryStream.Write((new byte[8] { 0x06, 0x01, 0xb1, 0x1d, 0x00, 0x00, 0x00, 0x0f }), 0, 8);
-            ntlmMemoryStream.Write(netbiosDomainBytes, 0, netbiosDomainBytes.Length);
+            ntlmMemoryStream.Write((new byte[8] { 0x0a, 0x01, 0x61, 0x4a, 0x00, 0x00, 0x00, 0x0f }), 0, 8); // version
+            ntlmMemoryStream.Write(netbiosDomainData, 0, netbiosDomainData.Length);
             ntlmMemoryStream.Write((new byte[2] { 0x02, 0x00 }), 0, 2);
             ntlmMemoryStream.Write(netbiosDomainLength, 0, 2);
-            ntlmMemoryStream.Write(netbiosDomainBytes, 0, netbiosDomainBytes.Length);
+            ntlmMemoryStream.Write(netbiosDomainData, 0, netbiosDomainData.Length);
             ntlmMemoryStream.Write((new byte[2] { 0x01, 0x00 }), 0, 2);
             ntlmMemoryStream.Write(hostnameLength, 0, 2);
-            ntlmMemoryStream.Write(hostnameBytes, 0, hostnameBytes.Length);
+            ntlmMemoryStream.Write(hostnameData, 0, hostnameData.Length);
             ntlmMemoryStream.Write((new byte[2] { 0x04, 0x00 }), 0, 2);
             ntlmMemoryStream.Write(dnsDomainLength, 0, 2);
-            ntlmMemoryStream.Write(dnsDomainBytes, 0, dnsDomainBytes.Length);
+            ntlmMemoryStream.Write(dnsDomainData, 0, dnsDomainData.Length);
             ntlmMemoryStream.Write((new byte[2] { 0x03, 0x00 }), 0, 2);
             ntlmMemoryStream.Write(dnsHostnameLength, 0, 2);
-            ntlmMemoryStream.Write(dnsHostnameBytes, 0, dnsHostnameBytes.Length);
+            ntlmMemoryStream.Write(dnsHostnameData, 0, dnsHostnameData.Length);
             ntlmMemoryStream.Write((new byte[2] { 0x05, 0x00 }), 0, 2);
             ntlmMemoryStream.Write(dnsDomainLength, 0, 2);
-            ntlmMemoryStream.Write(dnsDomainBytes, 0, dnsDomainBytes.Length);
+            ntlmMemoryStream.Write(dnsDomainData, 0, dnsDomainData.Length);
             ntlmMemoryStream.Write((new byte[4] { 0x07, 0x00, 0x08, 0x00 }), 0, 4);
-            ntlmMemoryStream.Write(httpTimestamp, 0, httpTimestamp.Length);
+            ntlmMemoryStream.Write(timestamp, 0, timestamp.Length);
             ntlmMemoryStream.Write((new byte[6] { 0x00, 0x00, 0x00, 0x00, 0x0a, 0x0a }), 0, 6);
             string ntlmChallengeBase64 = Convert.ToBase64String(ntlmMemoryStream.ToArray());
             string ntlm = "NTLM " + ntlmChallengeBase64;

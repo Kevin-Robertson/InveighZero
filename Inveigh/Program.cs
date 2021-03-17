@@ -161,7 +161,7 @@ namespace Inveigh
         static void Main(string[] args)
         {           
             //end parameters
-            string version = "0.92 Dev 4";          
+            string version = "0.92 Dev 5";          
             string wpadDNSDomainIsHostsDirect = "";
             string wpadSHExpMatchHostsDirect = "";
             string wpadSHExpMatchURLsDirect = "";

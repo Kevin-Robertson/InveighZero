@@ -34,7 +34,6 @@ namespace Inveigh
             }
 
             Program.smbSessionTable[session] = challenge;
-
             SMBChallenge(destinationIPAddress.ToString(), snifferIP, tcpDestinationPort, tcpSourcePort, challenge);
         }
 
