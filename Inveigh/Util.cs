@@ -1213,6 +1213,7 @@ namespace Inveigh
 
                 if (!String.IsNullOrEmpty(value))
                 {
+
                     try
                     {
                         Int32.Parse(value);
@@ -1221,6 +1222,34 @@ namespace Inveigh
                     catch
                     {
                         Console.WriteLine(arguments[i].Substring(3) + " value must be an integer");
+                        Environment.Exit(0);
+                    }
+
+                }
+
+                i++;
+            }
+
+        }
+
+        public static void ValidateIntArrayArguments(string argument, string[] values)
+        {
+
+            int i = 0;
+            foreach (string value in values)
+            {
+
+                if (!String.IsNullOrEmpty(value))
+                {
+
+                    try
+                    {
+                        Int32.Parse(value);
+
+                    }
+                    catch
+                    {
+                        Console.WriteLine(argument.Substring(3) + " values must be integers");
                         Environment.Exit(0);
                     }
 

@@ -190,9 +190,9 @@ namespace Inveigh
                 consoleEntry = "";
             }
 
-            if (consoleEntry.StartsWith("[*]") || consoleEntry.Contains("captured") || consoleEntry.Contains("renewed to") || consoleEntry.Contains("leased to") || consoleEntry.Contains("advertised to") ||
-                consoleEntry.Contains("[not unique]") || consoleEntry.Contains("[redacted]") || (!consoleEntry.StartsWith("[+]") && !consoleEntry.StartsWith("[*]") && !consoleEntry.StartsWith("[!]") &&
-                !consoleEntry.StartsWith("[-] ") && !consoleEntry.StartsWith("[.]")) && !consoleEntry.Contains("[machine account]"))
+            if (consoleEntry.StartsWith("[*]") || consoleEntry.Contains(" captured ") || consoleEntry.Contains(" challenge ") || consoleEntry.Contains(" renewed to ") || consoleEntry.Contains(" leased to ") || 
+                consoleEntry.Contains(" advertised to ") || consoleEntry.Contains("[not unique]") || consoleEntry.Contains("[redacted]") || (!consoleEntry.StartsWith("[+]") && !consoleEntry.StartsWith("[*]") && 
+                !consoleEntry.StartsWith("[!]") && !consoleEntry.StartsWith("[-] ") && !consoleEntry.StartsWith("[.]")) && !consoleEntry.Contains("[machine account]"))
             {
                 Console.ForegroundColor = ConsoleColor.Green;
                 Console.WriteLine(consoleEntry);
@@ -212,6 +212,12 @@ namespace Inveigh
             }
             else if (consoleEntry.Contains("response sent]") || consoleEntry.Contains("[advertised ") || consoleEntry.Contains("[assigned "))
             {
+                Console.Write("[");
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.Write("+");
+                Console.ResetColor();
+                Console.Write("]");
+                consoleEntry = consoleEntry.Substring(3);
                 int outputIndex = (consoleEntry.Substring(5)).IndexOf("[") + 6;
                 string outputStart = consoleEntry.Substring(0, outputIndex);
                 string outputEnd = consoleEntry.Substring(outputIndex).Replace("]", "");
@@ -220,6 +226,14 @@ namespace Inveigh
                 Console.Write(outputEnd);
                 Console.ResetColor();
                 Console.WriteLine("]");
+            }
+            else if (consoleEntry.StartsWith("[+]"))
+            {
+                Console.Write("[");
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.Write("+");
+                Console.ResetColor();
+                Console.WriteLine("]" + consoleEntry.Substring(3));
             }
             else
             {

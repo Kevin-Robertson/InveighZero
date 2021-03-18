@@ -27,8 +27,6 @@ namespace Inveigh
                 udpClient.Client.IOControl((IOControlCode)SIO_UDP_CONNRESET, new byte[] { 0, 0, 0, 0 }, null);
                 udpClient.Client.Bind(ipEndPoint);
 
-                Console.WriteLine(type + " " + ipVersion + " " + listenerIP);
-
                 switch (type)
                 {
                 
