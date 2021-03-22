@@ -12,7 +12,7 @@ namespace Inveigh
         {
             IPAddress destinationIPAddress = IPAddress.Parse(IP);
             IPEndPoint ipEndPoint = new IPEndPoint(IPAddress.Broadcast, 137);
-            UdpClient udpClient = UDP.UDPListener("NBNS", "IPv4", IPAddress.Any.ToString(), 137);
+            UdpClient udpClient = UDP.UDPListener("NBNS", "IPv4", 137);
 
             while (!Program.exitInveigh)
             {

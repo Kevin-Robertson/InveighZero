@@ -6,70 +6,70 @@ namespace Inveigh
     class SMB
     {
 
-        public static void SMBIncoming(byte[] payloadBytes, IPAddress destinationIPAddress, IPAddress sourceIPAddress, string snifferIP, int tcpDestinationPort, int tcpSourcePort)
+        public static void SMBIncoming(byte[] payload, string destinationIP, string sourceIP, string snifferIP, string destinationPort, string sourcePort)
         {
-            SMBConnection(payloadBytes, snifferIP, sourceIPAddress.ToString(), destinationIPAddress.ToString(), Convert.ToString(tcpSourcePort), Convert.ToString(tcpDestinationPort));
-            string session = GetSMB2Session(payloadBytes);
+            SMBConnection(payload, snifferIP, sourceIP, destinationIP, sourcePort, destinationPort);
+            string session = GetSMB2Session(payload);
 
             if (String.IsNullOrEmpty(session))
             {
-                session = GetSMB1Session(payloadBytes, destinationIPAddress.ToString(), tcpDestinationPort);
+                session = GetSMB1Session(payload, destinationIP, destinationPort);
             }
 
             if (Program.smbSessionTable.ContainsKey(session))
             {
-                NTLM.GetNTLMResponse(payloadBytes, sourceIPAddress.ToString(), Convert.ToString(tcpSourcePort), "SMB", Convert.ToString(tcpDestinationPort), session);
+                NTLM.GetNTLMResponse(payload, sourceIP, sourcePort, "SMB", destinationPort, session);
             }
 
         }
 
-        public static void SMBOutgoing(byte[] payloadBytes, IPAddress destinationIPAddress, string snifferIP, int tcpDestinationPort, int tcpSourcePort)
+        public static void SMBOutgoing(byte[] payload, string destinationIP, string snifferIP, string destinationPort, string sourcePort)
         {
-            string challenge = NTLM.GetSMBNTLMChallenge(payloadBytes);
-            string session = GetSMB2Session(payloadBytes);
+            string challenge = NTLM.GetNTLMChallenge(payload);
+            string session = GetSMB2Session(payload);
 
             if (String.IsNullOrEmpty(session))
             {
-                session = GetSMB1Session(payloadBytes, destinationIPAddress.ToString(), tcpDestinationPort);
+                session = GetSMB1Session(payload, destinationIP, destinationPort);
             }
 
             Program.smbSessionTable[session] = challenge;
-            SMBChallenge(destinationIPAddress.ToString(), snifferIP, tcpDestinationPort, tcpSourcePort, challenge);
+            SMBChallenge(destinationIP, snifferIP, destinationPort, sourcePort, challenge);
         }
 
-        public static string GetSMB1Session(byte[] field, string sourceIP, int sourcePort)
+        public static string GetSMB1Session(byte[] payload, string sourceIP, string sourcePort)
         {
-            string payload = BitConverter.ToString(field);
-            payload = payload.Replace("-", String.Empty);
-            int index = payload.IndexOf("FF534D42");
+            string payloadHex = BitConverter.ToString(payload);
+            payloadHex = payloadHex.Replace("-", String.Empty);
+            int index = payloadHex.IndexOf("FF534D42");
             string session = "";
 
-            if (index > 0)
+            if (index >= 0)
             {
-                session = sourceIP + ":" + Convert.ToString(sourcePort);
+                session = sourceIP + ":" + sourcePort;
             }
 
             return session;
         }
 
-        public static string GetSMB2Session(byte[] field)
+        public static string GetSMB2Session(byte[] payload)
         {
-            string payload = BitConverter.ToString(field);
-            payload = payload.Replace("-", String.Empty);
-            int index = payload.IndexOf("FE534D42");
+            string payloadHex = BitConverter.ToString(payload);
+            payloadHex = payloadHex.Replace("-", String.Empty);
+            int index = payloadHex.IndexOf("FE534D42");
             string session = "";
 
-            if (index > 0)
+            if (index >= 0)
             {
-                session = payload.Substring((index + 80), 16);
+                session = payloadHex.Substring((index + 80), 16);
             }
 
             return session;
         }
 
-        public static void SMBChallenge(string destinationIP, string snifferIP, int tcpDestinationPort, int tcpSourcePort, string challenge)
+        public static void SMBChallenge(string destinationIP, string snifferIP, string destinationPort, string sourcePort, string challenge)
         {
-            string session = destinationIP.ToString() + ":" + Convert.ToString(tcpDestinationPort);
+            string session = destinationIP.ToString() + ":" + destinationPort;
 
             if (!String.IsNullOrEmpty(challenge))
             {
@@ -79,7 +79,7 @@ namespace Inveigh
 
                     lock (Program.outputList)
                     {
-                        Program.outputList.Add(String.Format("[+] [{0}] SMB({1}) NTLM challenge {2} sent to {3}", DateTime.Now.ToString("s"), tcpSourcePort, challenge, session));
+                        Program.outputList.Add(String.Format("[+] [{0}] SMB({1}) NTLM challenge {2} sent to {3}", DateTime.Now.ToString("s"), sourcePort, challenge, session));
                     }
 
                 }
@@ -88,7 +88,7 @@ namespace Inveigh
 
                     lock (Program.outputList)
                     {
-                        Program.outputList.Add(String.Format("[+] [{0}] SMB({1}) NTLM challenge {2} from {3}", DateTime.Now.ToString("s"), tcpSourcePort, challenge, session));
+                        Program.outputList.Add(String.Format("[+] [{0}] SMB({1}) NTLM challenge {2} from {3}", DateTime.Now.ToString("s"), sourcePort, challenge, session));
                     }
 
                 }
@@ -98,27 +98,27 @@ namespace Inveigh
         }
 
 
-        public static void SMBConnection(byte[] field, string snifferIP, string sourceIP, string destinationIP, string sourcePort, string smbPort)
+        public static void SMBConnection(byte[] payload, string snifferIP, string sourceIP, string destinationIP, string sourcePort, string destinationPort)
         {
-            string payload = BitConverter.ToString(field);
-            payload = payload.Replace("-", String.Empty);
+            string payloadHex = BitConverter.ToString(payload);
+            payloadHex = payloadHex.Replace("-", String.Empty);
             string session = sourceIP + ":" + sourcePort;
-            string sessionOutgoing = destinationIP + ":" + smbPort;
-            int index = payload.IndexOf("FF534D42");
+            string sessionOutgoing = destinationIP + ":" + destinationPort;
+            int index = payloadHex.IndexOf("FF534D42");
 
             if (index > 0)
             {
 
-                if (index > 0 && payload.Substring((index + 8), 2) == "72" && !String.Equals(sourceIP, snifferIP))
+                if (index > 0 && payloadHex.Substring((index + 8), 2) == "72" && !String.Equals(sourceIP, snifferIP))
                 {
 
                     lock (Program.outputList)
                     {
-                        Program.outputList.Add(String.Format("[.] [{0}] SMB1({1}) negotiation request detected from {2}", DateTime.Now.ToString("s"), smbPort, session));
+                        Program.outputList.Add(String.Format("[.] [{0}] SMB1({1}) negotiation request detected from {2}", DateTime.Now.ToString("s"), destinationPort, session));
                     }
 
                 }
-                else if (index > 0 && payload.Substring((index + 24), 4) == "0000" && String.Equals(sourceIP, snifferIP))
+                else if (index > 0 && payloadHex.Substring((index + 24), 4) == "0000" && String.Equals(sourceIP, snifferIP))
                 {
 
                     lock (Program.outputList)
@@ -130,9 +130,9 @@ namespace Inveigh
 
             }
 
-            index = payload.IndexOf("FE534D42");
+            index = payloadHex.IndexOf("FE534D42");
 
-            if (index > 0 && payload.Substring((index + 24), 4) == "0000")
+            if (index > 0 && payloadHex.Substring((index + 24), 4) == "0000")
             {
 
                 if (!String.Equals(sourceIP, snifferIP))
@@ -140,7 +140,7 @@ namespace Inveigh
 
                     lock (Program.outputList)
                     {
-                        Program.outputList.Add(String.Format("[.] [{0}] SMB2+({1}) negotiation request detected from {2}", DateTime.Now.ToString("s"), smbPort, session));
+                        Program.outputList.Add(String.Format("[.] [{0}] SMB2+({1}) negotiation request detected from {2}", DateTime.Now.ToString("s"), destinationPort, session));
                     }
 
                 }
@@ -156,7 +156,7 @@ namespace Inveigh
 
             }
 
-            index = payload.IndexOf("2A864886F7120102020100");
+            index = payloadHex.IndexOf("2A864886F7120102020100");
 
             if (index > 0)
             {
@@ -166,7 +166,7 @@ namespace Inveigh
 
                     lock (Program.outputList)
                     {
-                        Program.outputList.Add(String.Format("[.] [{0}] SMB({1}) Kerberos authentication preferred from {2}", DateTime.Now.ToString("s"), smbPort, session));
+                        Program.outputList.Add(String.Format("[.] [{0}] SMB({1}) Kerberos authentication preferred from {2}", DateTime.Now.ToString("s"), destinationPort, session));
                     }
 
                 }

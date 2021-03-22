@@ -17,11 +17,11 @@ namespace Inveigh
             if (String.Equals(ipVersion, "IPv6"))
             {
                 ipEndPoint = new IPEndPoint(IPAddress.IPv6Any, 5353);
-                udpClient = UDP.UDPListener("MDNSv6", ipVersion, IP, 5353);
+                udpClient = UDP.UDPListener("MDNSv6", ipVersion, 5353);
             }
             else
             {
-                udpClient = UDP.UDPListener("MDNS", ipVersion, IP, 5353);
+                udpClient = UDP.UDPListener("MDNS", ipVersion, 5353);
             }
 
             while (!Program.exitInveigh)

@@ -1,68 +1,18 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+<Project Sdk="Microsoft.NET.Sdk">
+
   <PropertyGroup>
-    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{113AE281-D1E5-42E7-9CC2-12D30757BAF1}</ProjectGuid>
     <OutputType>Exe</OutputType>
-    <RootNamespace>Inveigh</RootNamespace>
-    <AssemblyName>Inveigh</AssemblyName>
-    <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
-    <FileAlignment>512</FileAlignment>
-    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
-    <TargetFrameworkProfile />
+    <TargetFrameworks>net35;net45;net5.0</TargetFrameworks>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-    <PlatformTarget>AnyCPU</PlatformTarget>
-    <DebugSymbols>true</DebugSymbols>
-    <DebugType>full</DebugType>
-    <Optimize>false</Optimize>
-    <OutputPath>bin\Debug\</OutputPath>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-    <Prefer32Bit>false</Prefer32Bit>
+  
+  <PropertyGroup>
+  <DefineConstants Condition="$(RuntimeIdentifier.StartsWith('win'))">$(DefineConstants);BUILT_FOR_WINDOWS</DefineConstants>
+</PropertyGroup>
+  
+  <PropertyGroup>
+    <!-- https://github.com/dotnet/msbuild/issues/1333#issuecomment-296346352 -->
+    <FrameworkPathOverride Condition="'$(TargetFramework)' == 'net35'">$(MSBuildProgramFiles32)\Reference Assemblies\Microsoft\Framework\.NETFramework\v3.5\Profile\Client</FrameworkPathOverride>
+	<AutomaticallyUseReferenceAssemblyPackages Condition=" '$(TargetFramework)' == 'net35' ">false</AutomaticallyUseReferenceAssemblyPackages>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <PlatformTarget>AnyCPU</PlatformTarget>
-    <DebugType>pdbonly</DebugType>
-    <Optimize>true</Optimize>
-    <OutputPath>bin\Release\</OutputPath>
-    <DefineConstants>TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-    <Prefer32Bit>false</Prefer32Bit>
-  </PropertyGroup>
-  <ItemGroup>
-    <Reference Include="System" />
-    <Reference Include="System.Core" />
-    <Reference Include="System.DirectoryServices" />
-    <Reference Include="System.DirectoryServices.Protocols" />
-    <Reference Include="System.Xml.Linq" />
-    <Reference Include="System.Data.DataSetExtensions" />
-    <Reference Include="System.Data" />
-    <Reference Include="System.Xml" />
-  </ItemGroup>
-  <ItemGroup>
-    <Compile Include="Control.cs" />
-    <Compile Include="Protocols\DHCPv6.cs" />
-    <Compile Include="Protocols\DNS.cs" />
-    <Compile Include="Protocols\ICMPv6.cs" />
-    <Compile Include="Protocols\LLMNR.cs" />
-    <Compile Include="Protocols\MDNS.cs" />
-    <Compile Include="Protocols\SMB.cs" />
-    <Compile Include="Protocols\UDP.cs" />
-    <Compile Include="Util.cs" />
-    <Compile Include="Protocols\HTTP.cs" />
-    <Compile Include="Protocols\NBNS.cs" />
-    <Compile Include="Protocols\NTLM.cs" />
-    <Compile Include="Program.cs" />
-    <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Sniffer.cs" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="App.config" />
-  </ItemGroup>
-  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  
 </Project>

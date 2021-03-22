@@ -97,7 +97,6 @@ namespace Inveigh
                     string httpMethod = "";
                     string request = "";
                     string authorizationNTLM = "NTLM";
-                    bool httpSend = true;
                     bool proxyIgnoreMatch = false;
                     bool wpadAuthIgnoreMatch = false;
                     bool ntlmESS = false;
@@ -109,7 +108,6 @@ namespace Inveigh
                     byte[] headerAuthenticateData = null;
                     byte[] headerCacheControl = null;
                     byte[] headerStatusCode = null;
-                    byte[] headerLocation = null;
                     byte[] responsePhrase = null;
                     byte[] message = null;               
                     byte[] requestData = new byte[4096];
@@ -296,10 +294,6 @@ namespace Inveigh
                                     if (!String.IsNullOrEmpty(Program.argHTTPResponse))
                                     {
                                         headerCacheControl = Encoding.UTF8.GetBytes("Cache-Control: no-cache, no-store");
-                                    }
-                                    else
-                                    {
-                                        httpSend = false;
                                     }
 
                                 }

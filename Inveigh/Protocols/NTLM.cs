@@ -5,14 +5,14 @@ namespace Inveigh
     class NTLM
     {
 
-        public static string GetSMBNTLMChallenge(byte[] payload)
+        public static string GetNTLMChallenge(byte[] payload)
         {
             string hex = BitConverter.ToString(payload);
             hex = hex.Replace("-", String.Empty);
             int index = hex.IndexOf("4E544C4D53535000");
             string challenge = "";
 
-            if (index > 0 && String.Equals(hex.Substring((index + 16), 8), "02000000"))
+            if (index >= 0 && String.Equals(hex.Substring((index + 16), 8), "02000000"))
             {
                 challenge = hex.Substring((index + 48), 16);
             }
@@ -39,7 +39,7 @@ namespace Inveigh
                 session = sourceIP + ":" + sourcePort;
             }
 
-            if ((String.Equals(protocol, "HTTP") || String.Equals(protocol, "Proxy") || index >= 0) && hex.Substring((index + 16), 8) == "03000000")
+            if (index >= 0 && hex.Substring((index + 16), 8) == "03000000")
             {
                 int ntlmsspOffset = index / 2;
                 int lmLength = (int)Util.UInt16DataLength((ntlmsspOffset + 12), payload);

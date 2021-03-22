@@ -8,8 +8,6 @@ namespace Inveigh
 {
     class Sniffer
     {
-         // todo move
-
         public static void SnifferSpoofer(string ipVersion, string protocol, string snifferIP)
         {
             byte[] spooferIPData = IPAddress.Parse(Program.argSpooferIP).GetAddressBytes();
@@ -181,7 +179,7 @@ namespace Inveigh
                                 {
                                     byte tcpFlags = binaryReader.ReadByte();
                                     binaryReader.ReadBytes(tcpHeaderLength - 15);
-                                    byte[] payloadBytes = binaryReader.ReadBytes(packetLength);
+                                    byte[] tcpPayload = binaryReader.ReadBytes(packetLength);
                                     string tcpSession = sourceIP + ":" + tcpSourcePort;
                                     string tcpFlagsBinary = Convert.ToString(tcpFlags, 2);
                                     tcpFlagsBinary = tcpFlagsBinary.PadLeft(8, '0');
@@ -199,22 +197,22 @@ namespace Inveigh
                                     switch (tcpDestinationPortNumber)
                                     {
                                         case 139:
-                                            SMB.SMBIncoming(payloadBytes, destinationIPAddress, sourceIPAddress, snifferIP, tcpDestinationPortNumber, tcpSourcePortNumber);
+                                            SMB.SMBIncoming(tcpPayload, destinationIP, sourceIP, snifferIP, tcpDestinationPort, tcpSourcePort);
                                             break;
 
                                         case 445:
-                                            SMB.SMBIncoming(payloadBytes, destinationIPAddress, sourceIPAddress, snifferIP, tcpDestinationPortNumber, tcpSourcePortNumber);
+                                            SMB.SMBIncoming(tcpPayload, destinationIP, sourceIP, snifferIP, tcpDestinationPort, tcpSourcePort);
                                             break;
                                     }
 
                                     switch (tcpSourcePortNumber)
                                     {
                                         case 139:
-                                            SMB.SMBOutgoing(payloadBytes, destinationIPAddress, snifferIP, tcpDestinationPortNumber, tcpSourcePortNumber);
+                                            SMB.SMBOutgoing(tcpPayload, destinationIP, snifferIP, tcpDestinationPort, tcpSourcePort);
                                             break;
 
                                         case 445:
-                                            SMB.SMBOutgoing(payloadBytes, destinationIPAddress, snifferIP, tcpDestinationPortNumber, tcpSourcePortNumber);
+                                            SMB.SMBOutgoing(tcpPayload, destinationIP, snifferIP, tcpDestinationPort, tcpSourcePort);
                                             break;
                                     }
 

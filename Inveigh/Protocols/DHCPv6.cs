@@ -12,7 +12,7 @@ namespace Inveigh
         {
             IPAddress destinationIPAddress = IPAddress.Parse(ipv6);
             IPEndPoint ipEndPoint = new IPEndPoint(IPAddress.Parse(ipv6), 547);
-            UdpClient udpClient = UDP.UDPListener("DHCPv6", "IPv6", Program.argIPv6, 547);
+            UdpClient udpClient = UDP.UDPListener("DHCPv6", "IPv6", 547);
 
             while (!Program.exitInveigh)
             {

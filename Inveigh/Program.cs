@@ -6,11 +6,10 @@ using System.IO;
 using System.Threading;
 using System.Collections;
 using System.Globalization;
-using System.Text.RegularExpressions;
+
 
 namespace Inveigh
 {
-
     class Program
     {
         public static Hashtable smbSessionTable = Hashtable.Synchronized(new Hashtable());
@@ -58,6 +57,7 @@ namespace Inveigh
         public static bool enabledSMB = false;
         public static bool enabledSMBv6 = false;
         public static bool enabledSpooferRepeat = false;
+        public static bool enabledWindows = true;
         //begin parameters - set defaults as needed before compile
         public static string[] argSpooferDomainsIgnore;
         public static string[] argSpooferDomainsReply;
@@ -77,7 +77,6 @@ namespace Inveigh
         public static string argDHCPv6 = "N";
         public static string argDHCPv6Local = "N";
         public static string argDHCPv6DNSSuffix = "";
-        public static string argDHCPv6RA = "30";
         public static string argDNS = "N";
         public static string argDNSv6 = "N";
         public static string argDNSHost = "";
@@ -141,7 +140,7 @@ namespace Inveigh
         public static string[] argWPADshExpMatchURLsProxy = null;
         public static string argWPADIP = "";
         public static string argWPADPort = "";
-        public static string argWPADResponse = "function FindProxyForURL(url,host) {return \"DIRECT\";}";
+        public static string argWPADResponse = ""; // default set below
 
         public static IPAddress ipAddress;
         public static IPAddress ipv6Address;
@@ -157,23 +156,28 @@ namespace Inveigh
         public static string dnsDomain = "";
         public static IPAddress dnsServerAddress;
         public static FileStream pcapFile = null;
-       
+        public static int consoleQueueLimit = -1;
+        public static int consoleStatus = 0;
+        public static int runCount = 0; // todo check
+        public static int runTime = 0;
+        public static bool isSession = false;
+        public static string version = "0.92 Dev 7";
+
         static void Main(string[] args)
         {           
-            //end parameters
-            string version = "0.92 Dev 6";          
+            //end parameters        
             string wpadDNSDomainIsHostsDirect = "";
             string wpadSHExpMatchHostsDirect = "";
             string wpadSHExpMatchURLsDirect = "";
             string wpadDNSDomainIsHostsProxy = "";
             string wpadSHExpMatchHostsProxy = "";
             string wpadSHExpMatchURLsProxy = "";
-            int consoleQueueLimit = -1;
-            int consoleStatus = 0;
-            int runCount = 0; // todo check
-            int runTime = 0;
-            bool isSession = false;
+            
             IList wpadDirectHostsList = new List<string>();
+
+            #if !BUILT_FOR_WINDOWS
+                enabledWindows = false;
+            #endif
 
             try
             {
@@ -236,11 +240,6 @@ namespace Inveigh
                             case "-DHCPV6DNSSUFFIX":
                             case "/DHCPV6DNSSUFFIX":
                                 argDHCPv6DNSSuffix = args[entry.index + 1];
-                                break;
-
-                            case "-DHCPV6RA":
-                            case "/DHCPV6RA":
-                                argDHCPv6RA = args[entry.index + 1];
                                 break;
 
                             case "-DNS":
@@ -349,12 +348,12 @@ namespace Inveigh
 
                             case "-IP":
                             case "/IP":
-                                argIP = args[entry.index + 1].ToUpper();
+                                argIP = args[entry.index + 1];
                                 break;
 
                             case "-IPV6":
                             case "/IPV6":
-                                argIPv6 = args[entry.index + 1].ToUpper();
+                                argIPv6 = args[entry.index + 1];
                                 break;
 
                             case "-LLMNR":
@@ -631,31 +630,7 @@ namespace Inveigh
 
             }
 
-            string[] ynArguments = { nameof(argConsoleUnique), nameof(argDHCPv6), nameof(argDHCPv6Local), nameof(argDNS), nameof(argDNSv6), nameof(argDNSRelay), nameof(argFileOutput), nameof(argFileUnique), nameof(argHTTP), nameof(argICMPv6), nameof(argLLMNR), nameof(argLLMNRv6), nameof(argLogOutput), nameof(argMachineAccounts), nameof(argMDNS), nameof(argMDNSv6), nameof(argMDNSUnicast), nameof(argNBNS), nameof(argPcap), nameof(argProxy), nameof(argSMB) };
-            string[] ynArgumentValues = { argConsoleUnique, argDHCPv6, argDHCPv6Local, argDNS, argDNSv6, argDNSRelay, argFileOutput, argFileUnique, argHTTP, argICMPv6, argLLMNR, argLLMNRv6, argLogOutput, argMachineAccounts, argMDNS, argMDNS, argMDNSUnicast, argNBNS, argPcap, argProxy, argSMB };
-            Util.ValidateStringArguments(ynArguments, ynArgumentValues, new string[] { "Y", "N" } );
-            Util.ValidateStringArguments(new string[] { nameof(argConsole) }, new string[] { argConsole }, new string[] { "0", "1", "2", "3" });
-            string[] authArguments = { nameof(argHTTPAuth), nameof(argProxyAuth), nameof(argWPADAuth) };
-            string[] authArgumentValues = { argHTTPAuth, argProxyAuth, argWPADAuth };
-            Util.ValidateStringArguments(authArguments, new string[] { argHTTPAuth, argWPADAuth }, new string[] { "ANONYMOUS", "BASIC", "NTLM", "NTLMNOESS" });    
-            Util.ValidateStringArrayArguments(nameof(argDNSTypes), argDNSTypes, new string[] { "A", "SOA", "SRV" });
-            Util.ValidateStringArrayArguments(nameof(argNBNSTypes), argNBNSTypes, new string[] { "00", "03", "20", "1B", "1C", "1D", "1E" });
-            Util.ValidateStringArrayArguments(nameof(argMDNSQuestions), argMDNSQuestions, new string[] { "QM", "QU" });
-            Util.ValidateStringArrayArguments(nameof(argMDNSQuestions), argMDNSTypes, new string[] { "A", "AAAA" });
-            string[] intArguments = { nameof(argConsole), nameof(argConsoleQueueLimit), nameof(argConsoleStatus), nameof(argDNSTTL), nameof(argICMPv6Interval), nameof(argLLMNRTTL), nameof(argMDNSTTL), nameof(argNBNSTTL), nameof(argProxyPort), nameof(argRunCount), nameof(argRunTime), nameof(argWPADPort) };
-            string[] intArgumentValues = { argConsole, argConsoleQueueLimit, argConsoleStatus, argDNSTTL, argICMPv6Interval, argLLMNRTTL, argMDNSTTL, argNBNSTTL, argProxyPort, argRunCount, argRunTime, argWPADPort };
-            Util.ValidateIntArguments(intArguments, intArgumentValues);
-            string[] ipAddressArguments = { nameof(argIP), nameof(argIPv6), nameof(argHTTPIP), nameof(argProxyIP), nameof(argSpooferIP), nameof(argSpooferIPv6), nameof(argWPADIP) };
-            string[] ipAddressArgumentValues = { argIP, argIPv6, argHTTPIP, argProxyIP, argSpooferIP, argSpooferIPv6, argWPADIP};
-            Util.ValidateIPAddressArguments(ipAddressArguments, ipAddressArgumentValues);
-            Util.ValidateIntArrayArguments(nameof(argHTTPPorts), argHTTPPorts);
-
-            Regex r = new Regex("^[A-Fa-f0-9]{16}$"); if (!String.IsNullOrEmpty(argChallenge) && !r.IsMatch(argChallenge)) { Console.WriteLine("Challenge is invalid"); Environment.Exit(0); }
-            r = new Regex("^[A-Fa-f0-9]{12}$"); if (!String.IsNullOrEmpty(argMAC) && !r.IsMatch(argMAC)) { Console.WriteLine("MAC address is invalid"); Environment.Exit(0); }
-            if ((argDNSTypes.Contains("SOA") || argDNSTypes.Contains("SRV")) && (String.IsNullOrEmpty(argDNSHost) || argDNSHost.Split('.').Count() < 3)) { Console.WriteLine("DNSHost must be specified and fully qualified when using DNSTypes SOA or SRV"); Environment.Exit(0); }
-            if (String.Equals(argFileOutput, "Y") && !Directory.Exists(argFileOutputDirectory)) { Console.WriteLine("FileOutputDirectory is invalid"); Environment.Exit(0); }
-            if (!Util.ArrayIsNullOrEmpty(argPcapTCP)) { foreach (string port in argPcapTCP) { if (!String.Equals(port, "ALL")) { try { Int32.Parse(port); } catch { Console.WriteLine("PcapPortTCP values must be an integer"); Environment.Exit(0); } } } }
-            if (!Util.ArrayIsNullOrEmpty(argPcapUDP)) { foreach (string port in argPcapUDP) { if (!String.Equals(port, "ALL")) { try { Int32.Parse(port); } catch { Console.WriteLine("PcapPortUDP values must be an integer"); Environment.Exit(0); } } } }
+            Control.ValidateArguments();
             console = Int32.Parse(argConsole);
             consoleQueueLimit = Int32.Parse(argConsoleQueueLimit);
             consoleStatus = Int32.Parse(argConsoleStatus);
@@ -801,12 +776,6 @@ namespace Inveigh
 
             if (string.IsNullOrEmpty(argSpooferIPv6))
             {
-
-                if (enabledDHCPv6 && !enabledDNSv6)
-                {
-                    outputList.Add(String.Format("[!] Enabled DNSv6 when using DHCPv6 with a local SpooferIPv6", version, DateTime.Now.ToString("s")));
-                }
-
                 argSpooferIPv6 = argIPv6;
             }
 
@@ -839,12 +808,13 @@ namespace Inveigh
                 dnsServerAddress = IPAddress.Parse(argDNSServer);
             }
 
+            ipAddress = IPAddress.Parse(argIP);
+            spooferIPData = IPAddress.Parse(argSpooferIP).GetAddressBytes();
+
             //todo add IPv6 checks
             if (!String.IsNullOrEmpty(argIPv6))
             {
-                ipAddress = IPAddress.Parse(argIP);
-                ipv6Address = IPAddress.Parse(argIPv6);
-                spooferIPData = IPAddress.Parse(argSpooferIP).GetAddressBytes();
+                ipv6Address = IPAddress.Parse(argIPv6); 
                 spooferIPv6Data = IPAddress.Parse(argSpooferIPv6).GetAddressBytes();
 
                 int i = 0;
@@ -862,10 +832,21 @@ namespace Inveigh
 
             }
 
+            if (!enabledWindows)
+            {
+                enabledElevated = false;
+            }
+
+            if (enabledWindows && !enabledElevated)
+            {
+                enabledICMPv6 = false;
+            }
+
             if (!enabledElevated)
             {
                 enabledPcap = false;
                 enabledSMB = false;
+                enabledSMBv6 = false;
             }
 
             if (enabledInspect)
@@ -876,6 +857,7 @@ namespace Inveigh
                     enabledHTTP = false;
                     enabledProxy = false;
                     enabledSMB = false;
+                    enabledSMBv6 = false;
                     enabledICMPv6 = false;
                 }
                 else
@@ -985,168 +967,12 @@ namespace Inveigh
             {
                argWPADResponse = String.Concat("function FindProxyForURL(url,host) {", wpadDNSDomainIsHostsDirect, argWPADshExpMatchHostsDirect, argWPADshExpMatchURLsDirect, "return \"PROXY", argWPADIP, ":", argWPADPort, "; DIRECT\";}");
             }
-
-            string optionStatus = "";
-            outputList.Add(String.Format("[*] Inveigh {0} started at {1}", version, DateTime.Now.ToString("s")));
-            if (enabledElevated) optionStatus = "+";
-            else optionStatus = "-";
-            outputList.Add(String.Format("[{0}] Elevated Privilege Mode", optionStatus));
-            if (enabledInspect) { outputList.Add("[+] Inspect Only Mode"); }
-            outputList.Add(String.Format("[+] Primary IP Address = {0}", argIP));
-            if (!String.IsNullOrEmpty(argIPv6)) outputList.Add(String.Format("[+] Primary IPv6 Address = {0}", argIPv6));
-            outputList.Add(String.Format("[+] Spoofer IP Address = {0}", argSpooferIP));
-            if (!String.IsNullOrEmpty(argSpooferIPv6)) outputList.Add(String.Format("[+] Spoofer IPv6 Address = {0}", argSpooferIPv6));
-            if (!String.IsNullOrEmpty(argMAC)) outputList.Add(String.Format("[+] Spoofer MAC Address = {0}", argMAC));
-            if (!Util.ArrayIsNullOrEmpty(argSpooferDomainsIgnore)) outputList.Add(String.Format("[+] Spoofer Domain Ignore = {0}", String.Join(",", argSpooferDomainsIgnore)));
-            if (!Util.ArrayIsNullOrEmpty(argSpooferDomainsReply)) outputList.Add(String.Format("[+] Spoofer Domains Reply = {0}", String.Join(",", argSpooferDomainsReply)));
-            if (!Util.ArrayIsNullOrEmpty(argSpooferHostsIgnore)) outputList.Add(String.Format("[+] Spoofer Hosts Ignore = {0}", String.Join(",", argSpooferHostsIgnore)));
-            if (!Util.ArrayIsNullOrEmpty(argSpooferHostsReply)) outputList.Add(String.Format("[+] Spoofer Hosts Reply = {0}", String.Join(",", argSpooferHostsReply)));
-            if (!Util.ArrayIsNullOrEmpty(argSpooferIPsIgnore)) outputList.Add(String.Format("[+] Spoofer IPs Ignore = {0}", String.Join(",", argSpooferIPsIgnore)));
-            if (!Util.ArrayIsNullOrEmpty(argSpooferIPsReply)) outputList.Add(String.Format("[+] Spoofer IPs Reply = {0}", String.Join(",", argSpooferIPsReply)));
-            if (!Util.ArrayIsNullOrEmpty(argSpooferMACsIgnore)) outputList.Add(String.Format("[+] Spoofer MACs Ignore = {0}", String.Join(",", argSpooferMACsIgnore)));
-            if (!Util.ArrayIsNullOrEmpty(argSpooferMACsReply)) outputList.Add(String.Format("[+] Spoofer MACs Reply = {0}", String.Join(",", argSpooferMACsReply)));
-            if (enabledElevated) optionStatus = "+";
-            else optionStatus = "-";
-            outputList.Add(String.Format("[{0}] Packet Sniffer", optionStatus));
-            if (enabledDHCPv6) optionStatus = "+";
-            else optionStatus = "-";
-            outputList.Add(String.Format("[{0}] DHCPv6 Spoofer", optionStatus));
-
-            if (enabledDHCPv6)
+            else if (String.IsNullOrEmpty(argWPADResponse))
             {
-                if (enabledDHCPv6Local) optionStatus = "+";
-                else optionStatus = "-";
-                outputList.Add(String.Format("[{0}] DHCPv6 Local Attacks", optionStatus));
-                if (!String.IsNullOrEmpty(argDHCPv6DNSSuffix)) outputList.Add(String.Format("[+] DHCPv6 DNS Suffix = {0}", argDHCPv6DNSSuffix));
-                           
+                argWPADResponse = "function FindProxyForURL(url,host) {return \"DIRECT\";}";
             }
 
-            if (enabledICMPv6)
-            {
-
-                if (enabledDHCPv6)
-                {
-                    outputList.Add(String.Format("[+] ICMPv6 RA DHCPv6 Interval = {0} Seconds", argDHCPv6RA));
-                }
-                else
-                {
-                    outputList.Add(String.Format("[+] ICMPv6 RA DNS Interval = {0} Seconds", argDHCPv6RA));
-                }
-
-            }
-
-            if (enabledDNS)
-            {
-                outputList.Add(String.Format("[+] DNS Spoofer For Types {0}", String.Join(",", argDNSTypes)));
-                if (!String.IsNullOrEmpty(argDNSHost)) { outputList.Add(String.Format("[+] DNS Host = {0}", argDNSHost)); }
-            }
-            else outputList.Add(String.Format("[-] DNS Spoofer"));
-
-            if (enabledDNSv6)
-            {
-                outputList.Add(String.Format("[+] DNSv6 Spoofer For Types {0}", String.Join(",", argDNSTypes)));
-                if (!String.IsNullOrEmpty(argDNSHost)) { outputList.Add(String.Format("[+] DNSv6 Host = {0}", argDNSHost)); }
-            }
-            else outputList.Add(String.Format("[-] DNSv6 Spoofer"));
-
-            if (enabledDNSRelay && (enabledDNS || enabledDNSv6))
-            {
-                outputList.Add(String.Format("[+] DNS Relay to {0}", dnsServerAddress.ToString()));
-            }
-
-            if (enabledLLMNR) optionStatus = "+";
-            else optionStatus = "-";
-            outputList.Add(String.Format("[{0}] LLMNR Spoofer", optionStatus));
-            if (enabledLLMNRv6) optionStatus = "Enabled";
-            else optionStatus = "Disabled";
-            outputList.Add(String.Format("[{0}] LLMNRv6 Spoofer", optionStatus));
-
-            if (enabledMDNS)
-            {
-                if (String.Equals(argMDNSUnicast, "Y")) optionStatus = "Unicast Reply Only ";
-                else optionStatus = "";
-                outputList.Add(String.Format("[+] mDNS({0}) {1}Spoofer For Types {2}", String.Join(",", argMDNSQuestions), optionStatus, String.Join(",", argMDNSTypes)));
-            }
-            else outputList.Add(String.Format("[-] mDNS Spoofer"));
-
-            if (enabledMDNSv6)
-            {
-                if (String.Equals(argMDNSUnicast, "Y")) optionStatus = "Unicast Reply Only ";
-                else optionStatus = "";
-                outputList.Add(String.Format("[+] mDNSv6({0}) {1}Spoofer For Types {2}", String.Join(",", argMDNSQuestions), optionStatus, String.Join(",", argMDNSTypes)));
-            }
-            else outputList.Add(String.Format("[-] mDNSv6 Spoofer"));
-
-            if (enabledNBNS)
-            {
-                outputList.Add(String.Format("[+] NBNS Spoofer For Types {0}", String.Join(",", argNBNSTypes)));
-            }
-            else outputList.Add(String.Format("[-] NBNS Spoofer"));
-
-            if (enabledHTTP)
-            {
-                if (argHTTPPorts.Length > 1) optionStatus = "Ports";
-                else optionStatus = "Port";
-                outputList.Add(String.Format("[+] HTTP Capture On {0} {1}", optionStatus, String.Join(",", argHTTPPorts)));
-                if (!String.IsNullOrEmpty(argChallenge)) outputList.Add(String.Format("[+] HTTP NTLM Challenge = {0}", argChallenge));
-                outputList.Add(String.Format("[+] HTTP Auth = {0}", argHTTPAuth));
-                if (!String.Equals(argHTTPIP, "0.0.0.0")) outputList.Add(String.Format("[+] HTTP IP = {0}", argHTTPIP));
-            }
-            else
-            {
-                outputList.Add(String.Format("[-] HTTP Capture"));
-            }
-
-            if (String.Equals(argHTTPAuth, "BASIC") || String.Equals(argProxyAuth, "BASIC") || String.Equals(argWPADAuth, "BASIC")) { outputList.Add(String.Format("[+] Basic Auth Realm = {0}", argHTTPBasicRealm)); }
-
-            if (enabledProxy)
-            {
-                if (!Util.ArrayIsNullOrEmpty(argPcapTCP)) outputList.Add(String.Format("[+] Pcap TCP Ports = {0}", String.Join(",", argPcapTCP)));
-                if (!Util.ArrayIsNullOrEmpty(argPcapUDP)) outputList.Add(String.Format("[+] Pcap UDP Ports = {0}", String.Join(",", argPcapUDP)));
-            }
-
-            if (enabledProxy)
-            {
-                outputList.Add(String.Format("[+] Proxy Auth Capture On Port {1}", optionStatus, argProxyPort));
-                if (!String.Equals(argProxyIP, "0.0.0.0")) outputList.Add(String.Format("[+] Proxy IP = {0}", argProxyIP));
-            }
-            else
-            {
-                outputList.Add(String.Format("[-] Proxy Auth Capture"));
-            }
-
-            outputList.Add(String.Format("[+] WPAD Auth = {0}", argWPADAuth));
-            if (argWPADAuth.StartsWith("NTLM")) outputList.Add(String.Format("[+] WPAD NTLM Auth Ignore List = {0}", String.Join(",", argWPADAuthIgnore)));
-            //if (!Util.ArrayIsNullOrEmpty(argWPADDirectHosts)) outputList.Add(String.Format("[+] WPAD Direct Hosts = {0}", String.Join(",", argWPADDirectHosts))); // todo check
-            if (!String.IsNullOrEmpty(argWPADIP)) outputList.Add(String.Format("[+] WPAD IP = {0}", argWPADIP));
-            if (!String.IsNullOrEmpty(argWPADPort)) outputList.Add(String.Format("[+] WPAD Port = {0}", argWPADPort));
-            if (enabledSMB) optionStatus = "+";
-            else optionStatus = "-";
-            outputList.Add(String.Format("[{0}] SMB Capture", optionStatus));
-            if (enabledSMBv6) optionStatus = "+";
-            else optionStatus = "-";
-            outputList.Add(String.Format("[{0}] SMBv6 Capture", optionStatus));
-            if (enabledMachineAccounts) optionStatus = "+";
-            else optionStatus = "-";
-            outputList.Add(String.Format("[{0}] Machine Account Capture", optionStatus));
-            if (enabledFileOutput) optionStatus = "+";
-            else optionStatus = "-";
-            outputList.Add(String.Format("[{0}] File Output", optionStatus));
-            if (enabledLogOutput) optionStatus = "+";
-            else optionStatus = "-";
-            outputList.Add(String.Format("[{0}] Log Output", optionStatus));
-            if (enabledPcap) optionStatus = "+";
-            else optionStatus = "-";
-            outputList.Add(String.Format("[{0}] Pcap Output", optionStatus));
-            if (isSession) optionStatus = "Imported";
-            else optionStatus = "Not Found";
-            outputList.Add(String.Format("[+] Previous Session Files = {0}", optionStatus));
-            if (enabledFileOutput) { outputList.Add(String.Format("[+] Output Directory = {0}", argFileOutputDirectory)); }
-            if (runCount == 1) outputList.Add(String.Format("[+] Run Count = {0} Minute", runCount));
-            else if (runCount > 1) outputList.Add(String.Format("[+] Run Count = {0} Minutes", runCount));
-            if (runTime == 1) outputList.Add(String.Format("[+] Run Time = {0} Minute", runTime));
-            else if (runTime > 1) outputList.Add(String.Format("[+] Run Time = {0} Minutes", runTime));
-            outputList.Add(String.Format("[*] Press ESC to access console"));
+            Control.StartupOutput();
 
             if (enabledElevated && (enabledDHCPv6 || enabledLLMNRv6|| enabledDNS || enabledMDNS || enabledLLMNR || enabledNBNS || enabledSMB))
             {
@@ -1228,15 +1054,16 @@ namespace Inveigh
                     
                 }
 
+                if ((!enabledWindows || enabledElevated) && !enabledInspect && !String.IsNullOrEmpty(argIPv6) && enabledICMPv6)
+                {
+                    Thread icmpv6Thread = new Thread(() => ICMPv6.icmpv6RouterAdvertise());
+                    icmpv6Thread.Start();
+                }
+
             }
 
             if (enabledHTTP)
             {
-                Thread httpsListenerThread = new Thread(() => HTTP.HTTPListener("HTTPS", "IPv4", argHTTPIP, "443"));
-                httpsListenerThread.Start();
-
-                Thread httpsIPv6ListenerThread = new Thread(() => HTTP.HTTPListener("HTTPS", "IPv6", argHTTPIP, "443"));
-                httpsIPv6ListenerThread.Start();
 
                 foreach (string port in argHTTPPorts)
                 {

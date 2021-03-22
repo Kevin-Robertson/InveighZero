@@ -11,15 +11,18 @@ namespace Inveigh
         public static void LLMNRListener(string ipVersion, string IP)
         {
             IPAddress listenerIPAddress = IPAddress.Any;
+            string type = "LLMNR";
 
             if (String.Equals(ipVersion, "IPv6"))
             {
+
                 listenerIPAddress = IPAddress.IPv6Any;
+                type = "LLMNRv6";
             }
 
             IPEndPoint ipEndPoint = new IPEndPoint(listenerIPAddress, 5355);
             IPAddress destinationIPAddress = IPAddress.Parse(IP);
-            UdpClient udpClient = UDP.UDPListener("LLMNR", ipVersion, IP, 5355);
+            UdpClient udpClient = UDP.UDPListener(type, ipVersion, 5355);
 
             while (!Program.exitInveigh)
             {
@@ -66,8 +69,6 @@ namespace Inveigh
                 enabled = Program.enabledLLMNRv6;
             }
 
-            byte[] transactionID = new byte[2];
-            Buffer.BlockCopy(payload, 0, transactionID, 0, 2);
             byte[] request = new byte[payload.Length - 18];
             byte[] requestLength = new byte[1];
             Buffer.BlockCopy(payload, 12, requestLength, 0, 1);

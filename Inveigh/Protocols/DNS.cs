@@ -11,15 +11,17 @@ namespace Inveigh
         public static void DNSListener(string ipVersion, string IP)
         {
             IPAddress listenerIPAddress = IPAddress.Any;
+            string type = "DNS";
 
             if (String.Equals(ipVersion, "IPv6"))
             {
                 listenerIPAddress = IPAddress.IPv6Any;
+                type = "DNSv6";
             }
 
             IPEndPoint ipEndPoint = new IPEndPoint(listenerIPAddress, 53);
             IPAddress destinationIPAddress = IPAddress.Parse(IP);
-            UdpClient udpClient = UDP.UDPListener("DNS", ipVersion, IP, 53);
+            UdpClient udpClient = UDP.UDPListener("DNS", ipVersion, 53);
 
             while (!Program.exitInveigh)
             {

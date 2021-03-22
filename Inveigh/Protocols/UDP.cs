@@ -7,24 +7,31 @@ namespace Inveigh
     class UDP
     {   
 
-        public static UdpClient UDPListener(string type, string ipVersion, string listenerIP, int listenerPortNumber)
+        public static UdpClient UDPListener(string type, string ipVersion, int listenerPortNumber)
         {
-            const int SIO_UDP_CONNRESET = -1744830452;
             AddressFamily addressFamily = AddressFamily.InterNetwork;
+            IPAddress listenerIPAddress = IPAddress.Any;
 
             if (String.Equals(ipVersion, "IPv6"))
             {
+                listenerIPAddress = IPAddress.IPv6Any;
                 addressFamily = AddressFamily.InterNetworkV6;
             }
 
-            IPEndPoint ipEndPoint = new IPEndPoint(IPAddress.Parse(listenerIP), listenerPortNumber);
+            IPEndPoint ipEndPoint = new IPEndPoint(listenerIPAddress, listenerPortNumber);
             UdpClient udpClient = new UdpClient(addressFamily);
 
             try
             {
                 udpClient.ExclusiveAddressUse = false;
                 udpClient.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
-                udpClient.Client.IOControl((IOControlCode)SIO_UDP_CONNRESET, new byte[] { 0, 0, 0, 0 }, null);
+
+                if (Program.enabledWindows)
+                {
+                    const int SIO_UDP_CONNRESET = -1744830452;
+                    udpClient.Client.IOControl((IOControlCode)SIO_UDP_CONNRESET, new byte[] { 0, 0, 0, 0 }, null);
+                }
+
                 udpClient.Client.Bind(ipEndPoint);
 
                 switch (type)
@@ -58,7 +65,7 @@ namespace Inveigh
 
                 lock (Program.outputList)
                 {
-                    Program.outputList.Add(String.Format("[!] Error starting unprivileged mDNS spoofer, UDP port sharing does not work on all versions of Windows.{1}", DateTime.Now.ToString("s"), ex)); // todo fix
+                    Program.outputList.Add(String.Format("[!] Error starting unprivileged listener, UDP port sharing does not work on all versions of Windows.{1}", DateTime.Now.ToString("s"), ex)); // todo fix
                 }
 
                 throw;
