@@ -17,27 +17,26 @@ namespace Inveigh
             while (!Program.exitInveigh)
             {
 
-                using (MemoryStream icmpv6MemoryStream = new MemoryStream())
+                using (MemoryStream memoryStream = new MemoryStream())
                 {
 
                     if (Program.enabledDHCPv6)
                     {
-                        icmpv6MemoryStream.Write((new byte[16] { 0x86, 0x00, 0x00, 0x00, 0x00, 0xc8, 0x07, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }), 0, 16);
+                        memoryStream.Write((new byte[16] { 0x86, 0x00, 0x00, 0x00, 0x00, 0xc8, 0x07, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }), 0, 16);
                     }
                     else
                     {
-                        icmpv6MemoryStream.Write((new byte[16] { 0x86, 0x00, 0x00, 0x00, 0x00, 0x08, 0x07, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }), 0, 16);
-                        icmpv6MemoryStream.Write((new byte[8] { 0x19, 0x3, 0x00, 0x00, 0x00, 0x00, 0x07, 0x08 }), 0, 8);      
-                        icmpv6MemoryStream.Write(Program.spooferIPv6Data, 0, Program.spooferIPv6Data.Length);
+                        memoryStream.Write((new byte[16] { 0x86, 0x00, 0x00, 0x00, 0x00, 0x08, 0x07, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }), 0, 16);
+                        memoryStream.Write((new byte[8] { 0x19, 0x3, 0x00, 0x00, 0x00, 0x00, 0x07, 0x08 }), 0, 8);      
+                        memoryStream.Write(Program.spooferIPv6Data, 0, Program.spooferIPv6Data.Length);
                         responseMessage = " with DNSv6 ";
-
                     }
 
                     Socket icmpv6SendSocket = new Socket(AddressFamily.InterNetworkV6, SocketType.Raw, ProtocolType.IcmpV6);
                     icmpv6SendSocket.SetSocketOption(SocketOptionLevel.IPv6, SocketOptionName.MulticastTimeToLive, 255);
-                    icmpv6SendSocket.SendBufferSize = (int)icmpv6MemoryStream.Length;
+                    icmpv6SendSocket.SendBufferSize = (int)memoryStream.Length;
                     IPEndPoint icmpv6EndPoint = new IPEndPoint(IPAddress.Parse("ff02::1"), 0);
-                    icmpv6SendSocket.SendTo(icmpv6MemoryStream.ToArray(), (int)icmpv6MemoryStream.Length, SocketFlags.None, icmpv6EndPoint);
+                    icmpv6SendSocket.SendTo(memoryStream.ToArray(), (int)memoryStream.Length, SocketFlags.None, icmpv6EndPoint);
                     icmpv6SendSocket.Close();
                 }
 

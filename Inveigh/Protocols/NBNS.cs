@@ -2,6 +2,7 @@
 using System.Net;
 using System.Net.Sockets;
 using System.IO;
+using System.Text.RegularExpressions;
 
 namespace Inveigh
 {
@@ -65,40 +66,45 @@ namespace Inveigh
                 byte[] request = new byte[payload.Length - 20];
                 Buffer.BlockCopy(payload, 13, request, 0, request.Length);
                 string requestHost = BytesToNBNSQuery(request);
-                string responseMessage = Util.CheckRequest("NBNS", requestHost, sourceIP, Program.argIP, nbnsQueryType, Program.argNBNSTypes, Program.enabledNBNS);
 
-                if (Program.enabledNBNS && String.Equals(responseMessage, "response sent"))
+                if (!String.IsNullOrEmpty(requestHost)) // todo check ignoring non-printable
                 {
+                    string responseMessage = Util.CheckRequest("NBNS", requestHost, sourceIP, Program.argIP, nbnsQueryType, Program.argNBNSTypes, Program.enabledNBNS);
 
-                    if (Array.Exists(Program.argNBNSTypes, element => element == nbnsQueryType) && !String.Equals(BitConverter.ToString(type), "21"))
+                    if (Program.enabledNBNS && String.Equals(responseMessage, "response sent"))
                     {
-                        responseStatus = "-";
-                        byte[] response = GetNBNSResponse(method, Program.argNBNSTTL, Program.spooferIPData, sourcePortData, payload);
 
-                        if (String.Equals(method, "sniffer"))
+                        if (Array.Exists(Program.argNBNSTypes, element => element == nbnsQueryType) && !String.Equals(BitConverter.ToString(type), "21"))
                         {
-                            UDP.UDPSnifferClient("IPv4", 0, sourceIPAddress, sourcePortNumber, response);
+                            responseStatus = "-";
+                            byte[] response = GetNBNSResponse(method, sourcePortData, payload);
+
+                            if (String.Equals(method, "sniffer"))
+                            {
+                                UDP.UDPSnifferClient("IPv4", 0, sourceIPAddress, sourcePortNumber, response);
+                            }
+                            else
+                            {
+                                UDP.UDPListenerClient(sourceIPAddress, 137, udpClient, response);
+                            }
+
+                        }
+                        else if (String.Equals(BitConverter.ToString(type), "21"))
+                        {
+                            responseMessage = "NBSTAT request";
                         }
                         else
                         {
-                            UDP.UDPListenerClient(sourceIPAddress, 137, udpClient, response);
+                            responseMessage = "NBNS type disabled";
                         }
 
                     }
-                    else if (String.Equals(BitConverter.ToString(type), "21"))
+
+                    lock (Program.outputList)
                     {
-                        responseMessage = "NBSTAT request";
-                    }
-                    else
-                    {
-                        responseMessage = "NBNS type disabled";
+                        Program.outputList.Add(String.Format("[{0}] [{1}] NBNS request for {2}<{3}> from {4} [{5}]", responseStatus, DateTime.Now.ToString("s"), requestHost, nbnsQueryType, sourceIPAddress, responseMessage));
                     }
 
-                }
-
-                lock (Program.outputList)
-                {
-                    Program.outputList.Add(String.Format("[{0}] [{1}] NBNS request for {2}<{3}> from {4} [{5}]", responseStatus, DateTime.Now.ToString("s"), requestHost, nbnsQueryType, sourceIPAddress, responseMessage));
                 }
 
             }
@@ -149,6 +155,13 @@ namespace Inveigh
                 nbnsQueryHost = nbnsQueryHost.Substring(2);
                 nbnsQueryHost = nbnsQueryHost.Substring(0, nbnsQueryHost.Length - 1);
                 nbnsQueryHost = String.Concat("<01><02>", nbnsQueryHost, "<02>");
+            }
+
+            Regex printable = new Regex("[^\x00-\x7F]+");
+
+            if (printable.IsMatch(nbnsQuery))
+            {
+                return "";
             }
 
             return nbnsQueryHost;
@@ -202,47 +215,43 @@ namespace Inveigh
             return nbnsQueryType;
         }
 
-        public static byte[] GetNBNSResponse(string type, string nbnsTTL, byte[] spooferIPData, byte[] udpSourcePort, byte[] udpPayload)
+        public static byte[] GetNBNSResponse(string method, byte[] udpSourcePort, byte[] payload)
         {
-            byte[] ttlNBNS = BitConverter.GetBytes(Int32.Parse(nbnsTTL));
-            Array.Reverse(ttlNBNS);
-            byte[] nbnsTransactionID = new byte[2];
-            Buffer.BlockCopy(udpPayload, 0, nbnsTransactionID, 0, 2);
-            byte[] nbnsRequestType = new byte[2];
-            Buffer.BlockCopy(udpPayload, 43, nbnsRequestType, 0, 2);
-            string nbnsQueryType = NBNS.NBNSQueryType(nbnsRequestType);
-            byte[] nbnsType = new byte[1];
-            Buffer.BlockCopy(udpPayload, 47, nbnsType, 0, 1);
-            byte[] nbnsRequest = new byte[udpPayload.Length - 20];
-            Buffer.BlockCopy(udpPayload, 13, nbnsRequest, 0, nbnsRequest.Length);
-            string nbnsRequestHost = NBNS.BytesToNBNSQuery(nbnsRequest);
+            byte[] TTL = BitConverter.GetBytes(Int32.Parse(Program.argNBNSTTL));
+            Array.Reverse(TTL);
+            byte[] transactionID = new byte[2];
+            Buffer.BlockCopy(payload, 0, transactionID, 0, 2);
+            byte[] request = new byte[34];
+            Buffer.BlockCopy(payload, 13, request, 0, request.Length);
 
-            MemoryStream nbnsMemoryStream = new MemoryStream();
-
-            if (String.Equals(type, "sniffer"))
+            using (MemoryStream memoryStream = new MemoryStream())
             {
-                nbnsMemoryStream.Write((new byte[2] { 0x00, 0x89 }), 0, 2);
-                nbnsMemoryStream.Write(udpSourcePort, 0, 2);
-                nbnsMemoryStream.Write((new byte[2] { 0x00, 0x00 }), 0, 2);
-                nbnsMemoryStream.Write((new byte[2] { 0x00, 0x00 }), 0, 2);
+
+                if (String.Equals(method, "sniffer"))
+                {
+                    memoryStream.Write((new byte[2] { 0x00, 0x89 }), 0, 2);
+                    memoryStream.Write(udpSourcePort, 0, 2);
+                    memoryStream.Write((new byte[2] { 0x00, 0x00 }), 0, 2);
+                    memoryStream.Write((new byte[2] { 0x00, 0x00 }), 0, 2);
+                }
+
+                memoryStream.Write(transactionID, 0, transactionID.Length);
+                memoryStream.Write((new byte[11] { 0x85, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x20 }), 0, 11);
+                memoryStream.Write(request, 0, request.Length);
+                memoryStream.Write((new byte[4] { 0x00, 0x20, 0x00, 0x01 }), 0, 4);
+                memoryStream.Write(TTL, 0, 4);
+                memoryStream.Write((new byte[4] { 0x00, 0x06, 0x00, 0x00 }), 0, 4);
+                memoryStream.Write(Program.spooferIPData, 0, Program.spooferIPData.Length);
+
+                if (String.Equals(method, "sniffer"))
+                {
+                    memoryStream.Position = 4;
+                    memoryStream.Write(Util.IntToByteArray2((int)memoryStream.Length), 0, 2);
+                }
+
+                return memoryStream.ToArray();
             }
 
-            nbnsMemoryStream.Write(nbnsTransactionID, 0, nbnsTransactionID.Length);
-            nbnsMemoryStream.Write((new byte[11] { 0x85, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x20 }), 0, 11);
-            nbnsMemoryStream.Write(nbnsRequest, 0, nbnsRequest.Length);
-            nbnsMemoryStream.Write(nbnsRequestType, 0, 2);
-            nbnsMemoryStream.Write((new byte[5] { 0x00, 0x00, 0x20, 0x00, 0x01 }), 0, 5);
-            nbnsMemoryStream.Write(ttlNBNS, 0, 4);
-            nbnsMemoryStream.Write((new byte[4] { 0x00, 0x06, 0x00, 0x00 }), 0, 4);
-            nbnsMemoryStream.Write(spooferIPData, 0, spooferIPData.Length);
-
-            if (String.Equals(type, "sniffer"))
-            {
-                nbnsMemoryStream.Position = 4;
-                nbnsMemoryStream.Write(Util.IntToByteArray2((int)nbnsMemoryStream.Length), 0, 2);
-            }
-
-            return nbnsMemoryStream.ToArray();
         }
 
     }

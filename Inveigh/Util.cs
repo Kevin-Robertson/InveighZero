@@ -950,26 +950,6 @@ namespace Inveigh
                 Console.WriteLine();
             }
 
-            if (nullarg || String.Equals(arg, "PCAP"))
-            {
-                Console.WriteLine(" -Pcap                       Default = Disabled: (Y/N) Enable/Disable IPv4 TCP/UDP pcap output.");
-                Console.WriteLine();
-            }
-
-            if (nullarg || String.Equals(arg, "PCAPPORTTCP"))
-            {
-                Console.WriteLine(" -PcapPortTCP                Default = 139,445: Comma separated list of TCP ports to filter which packets will be");
-                Console.WriteLine("                             written to the pcap file. Use 'All' to capture on all ports.");
-                Console.WriteLine();
-            }
-
-            if (nullarg || String.Equals(arg, "PCAPPORTUDP"))
-            {
-                Console.WriteLine(" -PcapPortUDP                Default = Disabled: Comma separated list of UDP ports to filter which packets will be");
-                Console.WriteLine("                             written to the pcap file. Use 'All' to capture on all ports.");
-                Console.WriteLine();
-            }
-
             if (nullarg || String.Equals(arg, "PROXY"))
             {
                 Console.WriteLine(" -Proxy                      Default = Disabled: (Y/N) Enable/Disable proxy listener authentication captures.");

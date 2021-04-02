@@ -215,145 +215,148 @@ namespace Inveigh
 
             }
 
-            MemoryStream memoryStream = new MemoryStream();
-
-            if (String.Equals(method, "sniffer"))
+            using (MemoryStream memoryStream = new MemoryStream())
             {
-                memoryStream.Write((new byte[2] { 0x00, 0x35 }), 0, 2);
-                memoryStream.Write(sourcePortData, 0, 2);
-                memoryStream.Write((new byte[2] { 0x00, 0x00 }), 0, 2);
-                memoryStream.Write((new byte[2] { 0x00, 0x00 }), 0, 2);
-                headerLength = 8;
-            }
-
-            if ((int)payload[2] != 40)
-            {
-
-                switch (type)
-                {
-
-                    case "A":
-                        memoryStream.Write(transactionID, 0, transactionID.Length);
-                        memoryStream.Write((new byte[10] { 0x80, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00 }), 0, 10); // todo change back 80
-                        memoryStream.Write(request, 0, request.Length);
-                        memoryStream.Write((new byte[4] { 0x00, 0x01, 0x00, 0x01 }), 0, 4);
-                        memoryStream.Write((new byte[2] { 0xc0, 0x0c }), 0, 2);
-                        memoryStream.Write((new byte[4] { 0x00, 0x01, 0x00, 0x01 }), 0, 4);
-                        break;
-
-                    case "AAAA":
-                        spooferIPData = Program.spooferIPv6Data;
-                        memoryStream.Write(transactionID, 0, transactionID.Length);
-                        memoryStream.Write((new byte[10] { 0x80, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00 }), 0, 10);
-                        memoryStream.Write(request, 0, request.Length);
-                        memoryStream.Write((new byte[4] { 0x00, 0x1c, 0x00, 0x01 }), 0, 4);
-                        memoryStream.Write((new byte[2] { 0xc0, 0x0c }), 0, 2);
-                        memoryStream.Write((new byte[4] { 0x00, 0x1c, 0x00, 0x01 }), 0, 4);
-                        break;
-
-                    case "SOA":
-                        memoryStream.Write(transactionID, 0, transactionID.Length);
-                        memoryStream.Write((new byte[10] { 0x85, 0x80, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x00, 0x01 }), 0, 10);
-                        memoryStream.Write(request, 0, request.Length);
-                        memoryStream.Write((new byte[4] { 0x00, 0x06, 0x00, 0x01 }), 0, 4);
-                        memoryStream.Write((new byte[2] { 0xc0, 0x0c }), 0, 2);
-                        memoryStream.Write((new byte[4] { 0x00, 0x06, 0x00, 0x01 }), 0, 4);
-                        memoryStream.Write(TTL, 0, 4);
-                        memoryStream.Write(Util.IntToByteArray2(hostData.Length + 35), 0, 2);
-                        dcLocation = (int) memoryStream.Length - headerLength;
-                        memoryStream.Write(hostData, 0, hostData.Length);
-                        memoryStream.Write((new byte[1] { 0xc0 }), 0, 1);
-                        memoryStream.Write(BitConverter.GetBytes(domainLocation), 0, 1);
-                        memoryStream.Write((new byte[11] { 0x0a, 0x68, 0x6f, 0x73, 0x74, 0x6d, 0x61, 0x73, 0x74, 0x65, 0x72 }), 0, 11);
-                        memoryStream.Write((new byte[1] { 0xc0 }), 0, 1);
-                        memoryStream.Write(BitConverter.GetBytes(domainLocation), 0, 1);
-                        memoryStream.Write((new byte[4] { 0x00, 0x00, 0x06, 0x58 }), 0, 4);
-                        memoryStream.Write((new byte[4] { 0x00, 0x00, 0x03, 0x84 }), 0, 4);
-                        memoryStream.Write((new byte[4] { 0x00, 0x00, 0x02, 0x58 }), 0, 4);
-                        memoryStream.Write((new byte[4] { 0x00, 0x01, 0x51, 0x80 }), 0, 4);
-                        memoryStream.Write(TTL, 0, 4);
-                        memoryStream.Write((new byte[1] { 0xc0 }), 0, 1);
-                        memoryStream.Write(BitConverter.GetBytes(dcLocation), 0, 1);
-                        memoryStream.Write((new byte[4] { 0x00, 0x01, 0x00, 0x01 }), 0, 4);
-                        break;
-
-                    case "SRV":
-                        memoryStream.Write(transactionID, 0, transactionID.Length);
-                        memoryStream.Write((new byte[10] { 0x85, 0x80, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01 }), 0, 10);
-                        memoryStream.Write(request, 0, request.Length);
-                        memoryStream.Write((new byte[4] { 0x00, 0x21, 0x00, 0x01 }), 0, 4);
-                        memoryStream.Write((new byte[2] { 0xc0, 0x0c }), 0, 2);
-                        memoryStream.Write((new byte[4] { 0x00, 0x21, 0x00, 0x01 }), 0, 4);
-                        memoryStream.Write(TTL, 0, 4);
-                        memoryStream.Write(Util.IntToByteArray2(hostFullData.Length + 6), 0, 2);
-                        memoryStream.Write((new byte[2] { 0x00, 0x00 }), 0, 2);
-                        memoryStream.Write((new byte[2] { 0x00, 0x65 }), 0, 2);
-
-                        switch (requestSplit[0])
-                        {
-
-                            case "_kerberos":
-                                 memoryStream.Write((new byte[2] { 0x00, 0x58 }), 0, 2);
-                                break;
-
-                            case "_ldap":
-                                 memoryStream.Write((new byte[2] { 0x01, 0x85 }), 0, 2);
-                                break;
-
-                        }
-
-                        dcLocation = (int)memoryStream.Length - headerLength;
-                        memoryStream.Write(hostFullData, 0, hostFullData.Length);
-                        memoryStream.Write((new byte[1] { 0xc0 }), 0, 1);
-                        memoryStream.Write(BitConverter.GetBytes(dcLocation), 0, 1);
-                        memoryStream.Write((new byte[4] { 0x00, 0x01, 0x00, 0x01 }), 0, 4);
-                        break;
-                }
-
-                 memoryStream.Write(TTL, 0, 4);
-                 memoryStream.Write((new byte[2] { 0x00, 0x04 }), 0, 2);
-                 memoryStream.Write(spooferIPData, 0, spooferIPData.Length);
 
                 if (String.Equals(method, "sniffer"))
                 {
-                     memoryStream.Position = 4;
-                     memoryStream.Write(Util.IntToByteArray2((int) memoryStream.Length), 0, 2);
+                    memoryStream.Write((new byte[2] { 0x00, 0x35 }), 0, 2);
+                    memoryStream.Write(sourcePortData, 0, 2);
+                    memoryStream.Write((new byte[2] { 0x00, 0x00 }), 0, 2);
+                    memoryStream.Write((new byte[2] { 0x00, 0x00 }), 0, 2);
+                    headerLength = 8;
                 }
 
-                if (String.Equals(method, "sniffer") && String.Equals(ipVersion, "IPv6"))
+                if ((int)payload[2] != 40)
                 {
-                    byte[] pseudoHeader = Util.GetIPv6PseudoHeader(sourceIPAddress, 17, (int) memoryStream.Length);
-                    UInt16 checkSum = Util.GetPacketChecksum(pseudoHeader,  memoryStream.ToArray());
-                    memoryStream.Position = 6;
-                    byte[] checksumData = Util.IntToByteArray2(checkSum);
-                    Array.Reverse(checksumData);
-                    memoryStream.Write(checksumData, 0, 2);
-                }
 
-            }
-            else
-            {
-                byte[] flags = new byte[2] { 0xa8, 0x05 };
-                byte[] dnsPayload = new byte[payload.Length - 2]; // todo check this
-                Buffer.BlockCopy(payload, 2, dnsPayload, 0, dnsPayload.Length);
-                memoryStream.Write(payload, 0, payload.Length);
+                    switch (type)
+                    {
 
-                if (String.Equals(method, "sniffer"))
-                {
-                     memoryStream.Position = 10;
-                     memoryStream.Write(flags, 0, 2);
-                     memoryStream.Position = 4;
-                     memoryStream.Write(Util.IntToByteArray2((int) memoryStream.Length), 0, 2);
+                        case "A":
+                            memoryStream.Write(transactionID, 0, transactionID.Length);
+                            memoryStream.Write((new byte[10] { 0x80, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00 }), 0, 10); // todo change back 80
+                            memoryStream.Write(request, 0, request.Length);
+                            memoryStream.Write((new byte[4] { 0x00, 0x01, 0x00, 0x01 }), 0, 4);
+                            memoryStream.Write((new byte[2] { 0xc0, 0x0c }), 0, 2);
+                            memoryStream.Write((new byte[4] { 0x00, 0x01, 0x00, 0x01 }), 0, 4);
+                            break;
+
+                        case "AAAA":
+                            spooferIPData = Program.spooferIPv6Data;
+                            memoryStream.Write(transactionID, 0, transactionID.Length);
+                            memoryStream.Write((new byte[10] { 0x80, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00 }), 0, 10);
+                            memoryStream.Write(request, 0, request.Length);
+                            memoryStream.Write((new byte[4] { 0x00, 0x1c, 0x00, 0x01 }), 0, 4);
+                            memoryStream.Write((new byte[2] { 0xc0, 0x0c }), 0, 2);
+                            memoryStream.Write((new byte[4] { 0x00, 0x1c, 0x00, 0x01 }), 0, 4);
+                            break;
+
+                        case "SOA":
+                            memoryStream.Write(transactionID, 0, transactionID.Length);
+                            memoryStream.Write((new byte[10] { 0x85, 0x80, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x00, 0x01 }), 0, 10);
+                            memoryStream.Write(request, 0, request.Length);
+                            memoryStream.Write((new byte[4] { 0x00, 0x06, 0x00, 0x01 }), 0, 4);
+                            memoryStream.Write((new byte[2] { 0xc0, 0x0c }), 0, 2);
+                            memoryStream.Write((new byte[4] { 0x00, 0x06, 0x00, 0x01 }), 0, 4);
+                            memoryStream.Write(TTL, 0, 4);
+                            memoryStream.Write(Util.IntToByteArray2(hostData.Length + 35), 0, 2);
+                            dcLocation = (int)memoryStream.Length - headerLength;
+                            memoryStream.Write(hostData, 0, hostData.Length);
+                            memoryStream.Write((new byte[1] { 0xc0 }), 0, 1);
+                            memoryStream.Write(BitConverter.GetBytes(domainLocation), 0, 1);
+                            memoryStream.Write((new byte[11] { 0x0a, 0x68, 0x6f, 0x73, 0x74, 0x6d, 0x61, 0x73, 0x74, 0x65, 0x72 }), 0, 11);
+                            memoryStream.Write((new byte[1] { 0xc0 }), 0, 1);
+                            memoryStream.Write(BitConverter.GetBytes(domainLocation), 0, 1);
+                            memoryStream.Write((new byte[4] { 0x00, 0x00, 0x06, 0x58 }), 0, 4);
+                            memoryStream.Write((new byte[4] { 0x00, 0x00, 0x03, 0x84 }), 0, 4);
+                            memoryStream.Write((new byte[4] { 0x00, 0x00, 0x02, 0x58 }), 0, 4);
+                            memoryStream.Write((new byte[4] { 0x00, 0x01, 0x51, 0x80 }), 0, 4);
+                            memoryStream.Write(TTL, 0, 4);
+                            memoryStream.Write((new byte[1] { 0xc0 }), 0, 1);
+                            memoryStream.Write(BitConverter.GetBytes(dcLocation), 0, 1);
+                            memoryStream.Write((new byte[4] { 0x00, 0x01, 0x00, 0x01 }), 0, 4);
+                            break;
+
+                        case "SRV":
+                            memoryStream.Write(transactionID, 0, transactionID.Length);
+                            memoryStream.Write((new byte[10] { 0x85, 0x80, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01 }), 0, 10);
+                            memoryStream.Write(request, 0, request.Length);
+                            memoryStream.Write((new byte[4] { 0x00, 0x21, 0x00, 0x01 }), 0, 4);
+                            memoryStream.Write((new byte[2] { 0xc0, 0x0c }), 0, 2);
+                            memoryStream.Write((new byte[4] { 0x00, 0x21, 0x00, 0x01 }), 0, 4);
+                            memoryStream.Write(TTL, 0, 4);
+                            memoryStream.Write(Util.IntToByteArray2(hostFullData.Length + 6), 0, 2);
+                            memoryStream.Write((new byte[2] { 0x00, 0x00 }), 0, 2);
+                            memoryStream.Write((new byte[2] { 0x00, 0x65 }), 0, 2);
+
+                            switch (requestSplit[0])
+                            {
+
+                                case "_kerberos":
+                                    memoryStream.Write((new byte[2] { 0x00, 0x58 }), 0, 2);
+                                    break;
+
+                                case "_ldap":
+                                    memoryStream.Write((new byte[2] { 0x01, 0x85 }), 0, 2);
+                                    break;
+
+                            }
+
+                            dcLocation = (int)memoryStream.Length - headerLength;
+                            memoryStream.Write(hostFullData, 0, hostFullData.Length);
+                            memoryStream.Write((new byte[1] { 0xc0 }), 0, 1);
+                            memoryStream.Write(BitConverter.GetBytes(dcLocation), 0, 1);
+                            memoryStream.Write((new byte[4] { 0x00, 0x01, 0x00, 0x01 }), 0, 4);
+                            break;
+                    }
+
+                    memoryStream.Write(TTL, 0, 4);
+                    memoryStream.Write((new byte[2] { 0x00, 0x04 }), 0, 2);
+                    memoryStream.Write(spooferIPData, 0, spooferIPData.Length);
+
+                    if (String.Equals(method, "sniffer"))
+                    {
+                        memoryStream.Position = 4;
+                        memoryStream.Write(Util.IntToByteArray2((int)memoryStream.Length), 0, 2);
+                    }
+
+                    if (String.Equals(method, "sniffer") && String.Equals(ipVersion, "IPv6"))
+                    {
+                        byte[] pseudoHeader = Util.GetIPv6PseudoHeader(sourceIPAddress, 17, (int)memoryStream.Length);
+                        UInt16 checkSum = Util.GetPacketChecksum(pseudoHeader, memoryStream.ToArray());
+                        memoryStream.Position = 6;
+                        byte[] checksumData = Util.IntToByteArray2(checkSum);
+                        Array.Reverse(checksumData);
+                        memoryStream.Write(checksumData, 0, 2);
+                    }
+
                 }
                 else
                 {
-                     memoryStream.Position = 2;
-                     memoryStream.Write(flags, 0, 2);
+                    byte[] flags = new byte[2] { 0xa8, 0x05 };
+                    byte[] dnsPayload = new byte[payload.Length - 2]; // todo check this
+                    Buffer.BlockCopy(payload, 2, dnsPayload, 0, dnsPayload.Length);
+                    memoryStream.Write(payload, 0, payload.Length);
+
+                    if (String.Equals(method, "sniffer"))
+                    {
+                        memoryStream.Position = 10;
+                        memoryStream.Write(flags, 0, 2);
+                        memoryStream.Position = 4;
+                        memoryStream.Write(Util.IntToByteArray2((int)memoryStream.Length), 0, 2);
+                    }
+                    else
+                    {
+                        memoryStream.Position = 2;
+                        memoryStream.Write(flags, 0, 2);
+                    }
+
                 }
 
+                return memoryStream.ToArray();
             }
 
-            return  memoryStream.ToArray();
         }
 
     }

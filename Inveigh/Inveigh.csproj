@@ -4,10 +4,7 @@
     <OutputType>Exe</OutputType>
     <TargetFrameworks>net35;net45;net5.0</TargetFrameworks>
   </PropertyGroup>
-  
-  <PropertyGroup>
-  <DefineConstants Condition="$(RuntimeIdentifier.StartsWith('win'))">$(DefineConstants);BUILT_FOR_WINDOWS</DefineConstants>
-</PropertyGroup>
+ 
   
   <PropertyGroup>
     <!-- https://github.com/dotnet/msbuild/issues/1333#issuecomment-296346352 -->

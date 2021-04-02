@@ -7,7 +7,6 @@ using System.Threading;
 using System.Collections;
 using System.Globalization;
 
-
 namespace Inveigh
 {
     class Program
@@ -51,7 +50,6 @@ namespace Inveigh
         public static bool enabledLogOutput = false;
         public static bool enabledMDNS = false;
         public static bool enabledMDNSv6 = false;
-        public static bool enabledPcap = false;
         public static bool enabledProxy = false;
         public static bool enabledMachineAccounts = false;
         public static bool enabledSMB = false;
@@ -114,9 +112,6 @@ namespace Inveigh
         public static string argNBNS = "N";
         public static string argNBNSTTL = "165";
         public static string[] argNBNSTypes = { "00", "20" };
-        public static string argPcap = "N";
-        public static string[] argPcapTCP = { "139", "445" };
-        public static string[] argPcapUDP = null;
         public static string argProxy = "N";
         public static string argProxyAuth = "NTLM";
         public static string[] argProxyIgnore = { "Firefox" };
@@ -141,7 +136,6 @@ namespace Inveigh
         public static string argWPADIP = "";
         public static string argWPADPort = "";
         public static string argWPADResponse = ""; // default set below
-
         public static IPAddress ipAddress;
         public static IPAddress ipv6Address;
         public static int dhcpv6Random = (new Random()).Next(1, 9999);
@@ -155,13 +149,12 @@ namespace Inveigh
         public static string netbiosDomain = Environment.UserDomainName;
         public static string dnsDomain = "";
         public static IPAddress dnsServerAddress;
-        public static FileStream pcapFile = null;
         public static int consoleQueueLimit = -1;
         public static int consoleStatus = 0;
         public static int runCount = 0; // todo check
         public static int runTime = 0;
         public static bool isSession = false;
-        public static string version = "0.92 Dev 7";
+        public static string version = "0.92 Dev 8";
 
         static void Main(string[] args)
         {           
@@ -171,12 +164,14 @@ namespace Inveigh
             string wpadSHExpMatchURLsDirect = "";
             string wpadDNSDomainIsHostsProxy = "";
             string wpadSHExpMatchHostsProxy = "";
-            string wpadSHExpMatchURLsProxy = "";
-            
+            string wpadSHExpMatchURLsProxy = "";       
             IList wpadDirectHostsList = new List<string>();
 
-            #if !BUILT_FOR_WINDOWS
+            #if !NETFRAMEWORK
+            if (!System.OperatingSystem.IsWindows())
+            {
                 enabledWindows = false;
+            }
             #endif
 
             try
@@ -431,21 +426,6 @@ namespace Inveigh
                                 argNBNSTypes = args[entry.index + 1].ToUpper().Split(',');
                                 break;
 
-                            case "-PCAP":
-                            case "/PCAP":
-                                argPcap = args[entry.index + 1].ToUpper();
-                                break;
-
-                            case "-PCAPTCP":
-                            case "/PCAPTCP":
-                                argPcapTCP = args[entry.index + 1].ToUpper().Split(',');
-                                break;
-
-                            case "-PCAPUDP":
-                            case "/PCAPUDP":
-                                argPcapUDP = args[entry.index + 1].ToUpper().Split(',');
-                                break;
-
                             case "-PROXY":
                             case "/PROXY":
                                 argProxy = args[entry.index + 1].ToUpper();
@@ -653,7 +633,6 @@ namespace Inveigh
             if (String.Equals(argLogOutput, "Y")) { enabledLogOutput = true; }
             if (String.Equals(argMDNS, "Y")) { enabledMDNS = true; }
             if (String.Equals(argMDNSv6, "Y")) { enabledMDNSv6 = true; }
-            if (String.Equals(argPcap, "Y")) { enabledPcap = true; }
             if (String.Equals(argProxy, "Y")) { enabledProxy = true; }
             if (String.Equals(argMachineAccounts, "Y")) { enabledMachineAccounts = true; }
             if (String.Equals(argNBNS, "Y")) { enabledNBNS = true; }
@@ -844,7 +823,6 @@ namespace Inveigh
 
             if (!enabledElevated)
             {
-                enabledPcap = false;
                 enabledSMB = false;
                 enabledSMBv6 = false;
             }

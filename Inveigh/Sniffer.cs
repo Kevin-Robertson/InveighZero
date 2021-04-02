@@ -2,7 +2,6 @@
 using System.Net;
 using System.Net.Sockets;
 using System.IO;
-using System.Collections;
 
 namespace Inveigh
 {
@@ -15,7 +14,7 @@ namespace Inveigh
             byte[] snifferIn = new byte[4] { 1, 0, 0, 0 };
             byte[] snifferOut = new byte[4] { 1, 0, 0, 0 };
             byte[] snifferData = new byte[0];
-            byte[] buffer = new byte[65534];
+            byte[] snifferBuffer = new byte[1500];
             Random ipv6Random = new Random();
             int ipv6RandomValue = ipv6Random.Next(1, 9999);
             byte[] snifferMACData = new byte[6];
@@ -84,22 +83,6 @@ namespace Inveigh
             }         
             
             int packetLength;
-            string outputPcap = "";
-
-            if (Program.enabledPcap)
-            {
-                byte[] pcapHeader = new byte[24] { 0xd4, 0xc3, 0xb2, 0xa1, 0x02, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00 };
-                outputPcap = Path.Combine(Program.argFileOutputDirectory, String.Concat(Program.argFilePrefix, "-Packets.pcap"));
-                bool existsPcapFile = File.Exists(outputPcap);
-
-                Program.pcapFile = new FileStream(outputPcap, FileMode.Append, FileAccess.Write);
-
-                if (!existsPcapFile)
-                {
-                    Program.pcapFile.Write(pcapHeader, 0, pcapHeader.Length);
-                }
-
-            }
 
             while (!Program.exitInveigh)
             {
@@ -109,9 +92,9 @@ namespace Inveigh
 
                     try
                     {
-                        packetLength = snifferSocket.ReceiveFrom(buffer, 0, buffer.Length, SocketFlags.None, ref snifferEndPoint);
+                        packetLength = snifferSocket.ReceiveFrom(snifferBuffer, 0, snifferBuffer.Length, SocketFlags.None, ref snifferEndPoint);
                         snifferData = new byte[packetLength];
-                        Buffer.BlockCopy(buffer, 0, snifferData, 0, packetLength);
+                        Buffer.BlockCopy(snifferBuffer, 0, snifferData, 0, packetLength);
                     }
                     catch
                     {
@@ -216,12 +199,6 @@ namespace Inveigh
                                             break;
                                     }
 
-                                    if (Program.enabledPcap && String.Equals(ipVersion, "IPv4") && (!Util.ArrayIsNullOrEmpty(Program.argPcapTCP) && (Array.Exists(Program.argPcapTCP, element => element == tcpSourcePort) ||
-                                        Array.Exists(Program.argPcapTCP, element => element == tcpDestinationPort) || Array.Exists(Program.argPcapTCP, element => element == "ALL"))))
-                                    {
-                                        PcapOutput((uint)packetLength, snifferData);
-                                    }
-
                                 }
 
                                 break;
@@ -277,16 +254,10 @@ namespace Inveigh
                                     case 5355:
                                         LLMNR.LLMNRReply("sniffer", ipVersion, udpSourcePortData, udpPayload, sourceIPAddress, destinationIPAddress, null, null);
                                         break;
-                                }
 
-                                if (Program.enabledPcap && String.Equals(ipVersion, "IPv4") && (!Util.ArrayIsNullOrEmpty(Program.argPcapUDP) && (Array.Exists(Program.argPcapUDP, element => element == udpSourcePort) ||
-                                   Array.Exists(Program.argPcapUDP, element => element == udpSourcePortNumber.ToString()) || Array.Exists(Program.argPcapUDP, element => element == "ALL"))))
-                                {
-                                    PcapOutput((uint)packetLength, snifferData);
                                 }
 
                                 break;
-             
                         }
 
                     }
@@ -295,36 +266,6 @@ namespace Inveigh
                 catch (Exception ex)
                 {
                     Program.outputList.Add(String.Format("[-] [{0}] Packet sniffing error detected - {1}", DateTime.Now.ToString("s"), ex.ToString()));
-                }
-
-            }
-
-        }
-
-        public static void PcapOutput(uint totalLength, byte[] byteData)
-        {
-
-            if (!Util.ArrayIsNullOrEmpty(byteData))
-            {
-                TimeSpan pcapEpochTime = DateTime.UtcNow - new DateTime(1970, 1, 1);
-                byte[] pcapLength = BitConverter.GetBytes(totalLength + 14);
-                byte[] pcapEpochTimeSeconds = BitConverter.GetBytes((int)pcapEpochTime.TotalSeconds);
-
-                using (MemoryStream ms = new MemoryStream())
-                {
-                    ms.Write((BitConverter.GetBytes((int)Math.Truncate(pcapEpochTime.TotalSeconds))), 0, (BitConverter.GetBytes((int)pcapEpochTime.TotalSeconds)).Length);
-                    ms.Write((BitConverter.GetBytes(pcapEpochTime.Milliseconds)), 0, (BitConverter.GetBytes(pcapEpochTime.Milliseconds)).Length);
-                    ms.Write(pcapLength, 0, pcapLength.Length);
-                    ms.Write(pcapLength, 0, pcapLength.Length);
-                    ms.Write((new byte[12] { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }), 0, 12);
-                    ms.Write((new byte[2] { 0x08, 0x00 }), 0, 2);
-                    ms.Write(byteData, 0, (int)totalLength);
-
-                    if (ms.ToArray().Length == totalLength + 30)
-                    {
-                        Program.pcapFile.Write(ms.ToArray(), 0, ms.ToArray().Length);
-                    }
-
                 }
 
             }

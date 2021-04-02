@@ -480,12 +480,6 @@ namespace Inveigh
 
             if (Program.enabledProxy)
             {
-                if (!Util.ArrayIsNullOrEmpty(Program.argPcapTCP)) Program.outputList.Add(String.Format("[+] Pcap TCP Ports = {0}", String.Join(",", Program.argPcapTCP)));
-                if (!Util.ArrayIsNullOrEmpty(Program.argPcapUDP)) Program.outputList.Add(String.Format("[+] Pcap UDP Ports = {0}", String.Join(",", Program.argPcapUDP)));
-            }
-
-            if (Program.enabledProxy)
-            {
                 Program.outputList.Add(String.Format("[+] Proxy Auth Capture On Port {1}", optionStatus, Program.argProxyPort));
                 if (!String.Equals(Program.argProxyIP, "0.0.0.0")) Program.outputList.Add(String.Format("[+] Proxy IP = {0}", Program.argProxyIP));
             }
@@ -514,9 +508,6 @@ namespace Inveigh
             if (Program.enabledLogOutput) optionStatus = "+";
             else optionStatus = "-";
             Program.outputList.Add(String.Format("[{0}] Log Output", optionStatus));
-            if (Program.enabledPcap) optionStatus = "+";
-            else optionStatus = "-";
-            Program.outputList.Add(String.Format("[{0}] Pcap Output", optionStatus));
             if (Program.isSession) optionStatus = "Imported";
             else optionStatus = "Not Found";
             Program.outputList.Add(String.Format("[+] Previous Session Files = {0}", optionStatus));
@@ -530,21 +521,14 @@ namespace Inveigh
 
         public static void StopInveigh()
         {
-
-            if (Program.pcapFile != null)
-            {
-                Program.pcapFile.Close();
-                Program.pcapFile.Dispose();
-            }
-
             Console.WriteLine(String.Format("[+] Inveigh exited at {0}", DateTime.Now.ToString("s")));
             Environment.Exit(0);
         }
 
         public static void ValidateArguments()
         {
-            string[] ynArguments = { nameof(Program.argConsoleUnique), nameof(Program.argDHCPv6), nameof(Program.argDHCPv6Local), nameof(Program.argDNS), nameof(Program.argDNSv6), nameof(Program.argDNSRelay), nameof(Program.argFileOutput), nameof(Program.argFileUnique), nameof(Program.argHTTP), nameof(Program.argICMPv6), nameof(Program.argLLMNR), nameof(Program.argLLMNRv6), nameof(Program.argLogOutput), nameof(Program.argMachineAccounts), nameof(Program.argMDNS), nameof(Program.argMDNSv6), nameof(Program.argMDNSUnicast), nameof(Program.argNBNS), nameof(Program.argPcap), nameof(Program.argProxy), nameof(Program.argSMB) };
-            string[] ynArgumentValues = { Program.argConsoleUnique, Program.argDHCPv6, Program.argDHCPv6Local, Program.argDNS, Program.argDNSv6, Program.argDNSRelay, Program.argFileOutput, Program.argFileUnique, Program.argHTTP, Program.argICMPv6, Program.argLLMNR, Program.argLLMNRv6, Program.argLogOutput, Program.argMachineAccounts, Program.argMDNS, Program.argMDNS, Program.argMDNSUnicast, Program.argNBNS, Program.argPcap, Program.argProxy, Program.argSMB };
+            string[] ynArguments = { nameof(Program.argConsoleUnique), nameof(Program.argDHCPv6), nameof(Program.argDHCPv6Local), nameof(Program.argDNS), nameof(Program.argDNSv6), nameof(Program.argDNSRelay), nameof(Program.argFileOutput), nameof(Program.argFileUnique), nameof(Program.argHTTP), nameof(Program.argICMPv6), nameof(Program.argLLMNR), nameof(Program.argLLMNRv6), nameof(Program.argLogOutput), nameof(Program.argMachineAccounts), nameof(Program.argMDNS), nameof(Program.argMDNSv6), nameof(Program.argMDNSUnicast), nameof(Program.argNBNS), nameof(Program.argProxy), nameof(Program.argSMB) };
+            string[] ynArgumentValues = { Program.argConsoleUnique, Program.argDHCPv6, Program.argDHCPv6Local, Program.argDNS, Program.argDNSv6, Program.argDNSRelay, Program.argFileOutput, Program.argFileUnique, Program.argHTTP, Program.argICMPv6, Program.argLLMNR, Program.argLLMNRv6, Program.argLogOutput, Program.argMachineAccounts, Program.argMDNS, Program.argMDNS, Program.argMDNSUnicast, Program.argNBNS, Program.argProxy, Program.argSMB };
             Util.ValidateStringArguments(ynArguments, ynArgumentValues, new string[] { "Y", "N" });
             Util.ValidateStringArguments(new string[] { nameof(Program.argConsole) }, new string[] { Program.argConsole }, new string[] { "0", "1", "2", "3" });
             string[] authArguments = { nameof(Program.argHTTPAuth), nameof(Program.argProxyAuth), nameof(Program.argWPADAuth) };
@@ -566,9 +550,6 @@ namespace Inveigh
             r = new Regex("^[A-Fa-f0-9]{12}$"); if (!String.IsNullOrEmpty(Program.argMAC) && !r.IsMatch(Program.argMAC)) { Console.WriteLine("MAC address is invalid"); Environment.Exit(0); }
             if ((Program.argDNSTypes.Contains("SOA") || Program.argDNSTypes.Contains("SRV")) && (String.IsNullOrEmpty(Program.argDNSHost) || Program.argDNSHost.Split('.').Count() < 3)) { Console.WriteLine("DNSHost must be specified and fully qualified when using DNSTypes SOA or SRV"); Environment.Exit(0); }
             if (String.Equals(Program.argFileOutput, "Y") && !Directory.Exists(Program.argFileOutputDirectory)) { Console.WriteLine("FileOutputDirectory is invalid"); Environment.Exit(0); }
-            if (!Util.ArrayIsNullOrEmpty(Program.argPcapTCP)) { foreach (string port in Program.argPcapTCP) { if (!String.Equals(port, "ALL")) { try { Int32.Parse(port); } catch { Console.WriteLine("PcapPortTCP values must be an integer"); Environment.Exit(0); } } } }
-            if (!Util.ArrayIsNullOrEmpty(Program.argPcapUDP)) { foreach (string port in Program.argPcapUDP) { if (!String.Equals(port, "ALL")) { try { Int32.Parse(port); } catch { Console.WriteLine("PcapPortUDP values must be an integer"); Environment.Exit(0); } } } }
-
         }
 
     }

@@ -195,63 +195,66 @@ namespace Inveigh
                 Buffer.BlockCopy(udpPayload, 46, iAID, 0, 4);
             }
 
-            MemoryStream memoryStream = new MemoryStream();
-
-            if (String.Equals(type, "sniffer"))
+            using (MemoryStream memoryStream = new MemoryStream())
             {
-                memoryStream.Write((new byte[2] { 0x02, 0x23 }), 0, 2);
-                memoryStream.Write((new byte[2] { 0x02, 0x22 }), 0, 2);
-                memoryStream.Write((new byte[2] { 0x00, 0x00 }), 0, 2);
-                memoryStream.Write((new byte[2] { 0x00, 0x00 }), 0, 2);
+
+                if (String.Equals(type, "sniffer"))
+                {
+                    memoryStream.Write((new byte[2] { 0x02, 0x23 }), 0, 2);
+                    memoryStream.Write((new byte[2] { 0x02, 0x22 }), 0, 2);
+                    memoryStream.Write((new byte[2] { 0x00, 0x00 }), 0, 2);
+                    memoryStream.Write((new byte[2] { 0x00, 0x00 }), 0, 2);
+                }
+
+                if ((int)messageTypeID[0] == 1)
+                {
+                    memoryStream.Write((new byte[1] { 0x02 }), 0, 1);
+                }
+                else if ((int)messageTypeID[0] == 3)
+                {
+                    memoryStream.Write((new byte[1] { 0x07 }), 0, 1);
+                }
+                else if ((int)messageTypeID[0] == 5)
+                {
+                    memoryStream.Write((new byte[1] { 0x07 }), 0, 1);
+                }
+
+                memoryStream.Write(transactionID, 0, transactionID.Length);
+                memoryStream.Write(clientIdentifier, 0, clientIdentifier.Length);
+                memoryStream.Write((new byte[4] { 0x00, 0x02, 0x00, 0x0a }), 0, 4);
+                memoryStream.Write((new byte[4] { 0x00, 0x03, 0x00, 0x01 }), 0, 4);
+                memoryStream.Write(Program.macData, 0, Program.macData.Length);
+                memoryStream.Write((new byte[4] { 0x00, 0x17, 0x00, 0x10 }), 0, 4);
+                memoryStream.Write(Program.spooferIPv6Data, 0, Program.spooferIPv6Data.Length);
+
+                if (!String.IsNullOrEmpty(Program.argDHCPv6DNSSuffix))
+                {
+                    memoryStream.Write((new byte[2] { 0x00, 0x18 }), 0, 2);
+                    memoryStream.Write(Util.IntToByteArray2(domainSuffixData.Length), 0, 2);
+                    memoryStream.Write(domainSuffixData, 0, domainSuffixData.Length);
+                }
+
+                memoryStream.Write((new byte[4] { 0x00, 0x03, 0x00, 0x28 }), 0, 4);
+                memoryStream.Write(iAID, 0, iAID.Length);
+                memoryStream.Write((new byte[12] { 0x00, 0x00, 0x00, 0xc8, 0x00, 0x00, 0x00, 0xfa, 0x00, 0x05, 0x00, 0x18 }), 0, 12);
+                memoryStream.Write(clientIP, 0, clientIP.Length);
+                memoryStream.Write((new byte[8] { 0x00, 0x00, 0x01, 0x2c, 0x00, 0x00, 0x01, 0x2c }), 0, 8);
+
+                if (String.Equals(type, "sniffer"))
+                {
+                    memoryStream.Position = 4;
+                    memoryStream.Write(Util.IntToByteArray2((int)memoryStream.Length), 0, 2);
+                    byte[] pseudoHeader = Util.GetIPv6PseudoHeader(sourceIPAddress, 17, (int)memoryStream.Length);
+                    UInt16 checkSum = Util.GetPacketChecksum(pseudoHeader, memoryStream.ToArray());
+                    memoryStream.Position = 6;
+                    byte[] packetChecksum = Util.IntToByteArray2(checkSum);
+                    Array.Reverse(packetChecksum);
+                    memoryStream.Write(packetChecksum, 0, 2);
+                }
+
+                return memoryStream.ToArray();
             }
 
-            if ((int)messageTypeID[0] == 1)
-            {
-                memoryStream.Write((new byte[1] { 0x02 }), 0, 1);
-            }
-            else if ((int)messageTypeID[0] == 3)
-            {
-                memoryStream.Write((new byte[1] { 0x07 }), 0, 1);
-            }
-            else if ((int)messageTypeID[0] == 5)
-            {
-                memoryStream.Write((new byte[1] { 0x07 }), 0, 1);
-            }
-
-            memoryStream.Write(transactionID, 0, transactionID.Length);
-            memoryStream.Write(clientIdentifier, 0, clientIdentifier.Length);
-            memoryStream.Write((new byte[4] { 0x00, 0x02, 0x00, 0x0a }), 0, 4);
-            memoryStream.Write((new byte[4] { 0x00, 0x03, 0x00, 0x01 }), 0, 4);
-            memoryStream.Write(Program.macData, 0, Program.macData.Length);
-            memoryStream.Write((new byte[4] { 0x00, 0x17, 0x00, 0x10 }), 0, 4);
-            memoryStream.Write(Program.spooferIPv6Data, 0, Program.spooferIPv6Data.Length);
-
-            if (!String.IsNullOrEmpty(Program.argDHCPv6DNSSuffix))
-            {
-                memoryStream.Write((new byte[2] { 0x00, 0x18 }), 0, 2);
-                memoryStream.Write(Util.IntToByteArray2(domainSuffixData.Length), 0, 2);
-                memoryStream.Write(domainSuffixData, 0, domainSuffixData.Length);
-            }
-
-            memoryStream.Write((new byte[4] { 0x00, 0x03, 0x00, 0x28 }), 0, 4);
-            memoryStream.Write(iAID, 0, iAID.Length);
-            memoryStream.Write((new byte[12] { 0x00, 0x00, 0x00, 0xc8, 0x00, 0x00, 0x00, 0xfa, 0x00, 0x05, 0x00, 0x18 }), 0, 12);
-            memoryStream.Write(clientIP, 0, clientIP.Length);
-            memoryStream.Write((new byte[8] { 0x00, 0x00, 0x01, 0x2c, 0x00, 0x00, 0x01, 0x2c }), 0, 8);
-
-            if (String.Equals(type, "sniffer"))
-            {
-                memoryStream.Position = 4;
-                memoryStream.Write(Util.IntToByteArray2((int)memoryStream.Length), 0, 2);
-                byte[] pseudoHeader = Util.GetIPv6PseudoHeader(sourceIPAddress, 17, (int)memoryStream.Length);
-                UInt16 checkSum = Util.GetPacketChecksum(pseudoHeader, memoryStream.ToArray());
-                memoryStream.Position = 6;
-                byte[] packetChecksum = Util.IntToByteArray2(checkSum);
-                Array.Reverse(packetChecksum);
-                memoryStream.Write(packetChecksum, 0, 2);
-            }
-
-            return memoryStream.ToArray();
         }
 
         public static string DHCPv6Output(string clientMAC, string FQDN, string leaseIP, string sourceIPAddress, string serverMAC, int vendorIndex, int messageTypeID)

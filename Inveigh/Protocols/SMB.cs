@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Net;
 
 namespace Inveigh
 {
@@ -33,15 +32,19 @@ namespace Inveigh
                 session = GetSMB1Session(payload, destinationIP, destinationPort);
             }
 
-            Program.smbSessionTable[session] = challenge;
-            SMBChallenge(destinationIP, snifferIP, destinationPort, sourcePort, challenge);
+            if (!String.IsNullOrEmpty(session) && !String.IsNullOrEmpty(challenge))
+            {
+                Program.smbSessionTable[session] = challenge;
+                SMBChallenge(destinationIP, snifferIP, destinationPort, sourcePort, challenge);
+            }
+         
         }
 
         public static string GetSMB1Session(byte[] payload, string sourceIP, string sourcePort)
         {
-            string payloadHex = BitConverter.ToString(payload);
-            payloadHex = payloadHex.Replace("-", String.Empty);
-            int index = payloadHex.IndexOf("FF534D42");
+            string hex = BitConverter.ToString(payload);
+            hex = hex.Replace("-", String.Empty);
+            int index = hex.IndexOf("FF534D42");
             string session = "";
 
             if (index >= 0)
@@ -54,14 +57,14 @@ namespace Inveigh
 
         public static string GetSMB2Session(byte[] payload)
         {
-            string payloadHex = BitConverter.ToString(payload);
-            payloadHex = payloadHex.Replace("-", String.Empty);
-            int index = payloadHex.IndexOf("FE534D42");
+            string hex = BitConverter.ToString(payload);
+            hex = hex.Replace("-", String.Empty);
+            int index = hex.IndexOf("FE534D42");
             string session = "";
 
             if (index >= 0)
             {
-                session = payloadHex.Substring((index + 80), 16);
+                session = hex.Substring((index + 80), 16);
             }
 
             return session;

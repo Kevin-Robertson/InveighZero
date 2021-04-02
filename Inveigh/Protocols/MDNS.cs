@@ -47,7 +47,7 @@ namespace Inveigh
             byte[] mdnsType = new byte[2];
             int sourcePortNumber = 0;
             string responseStatus = "-";
-            bool enabled = Program.enabledMDNS;
+            bool enabled = Program.enabledMDNS;  // todo check
             string question = "QM";
 
             if (String.Equals(method, "listener"))
@@ -71,8 +71,8 @@ namespace Inveigh
                 question = "QU";
             }
 
-            byte[] transactionID = new byte[2];
-            Buffer.BlockCopy(payload, 0, transactionID, 0, 2);
+            ////byte[] transactionID = new byte[2];
+            //Buffer.BlockCopy(payload, 0, transactionID, 0, 2);
             byte[] questions = new byte[2];
             Buffer.BlockCopy(payload, 4, questions, 0, 2);
             string requestHostFull = Util.ParseNameQuery(12, payload);
@@ -111,7 +111,7 @@ namespace Inveigh
 
                         if (String.Equals(method, "sniffer"))
                         {
-                            UDP.UDPSnifferClient(ipVersion, 5353, sourceIPAddress, 5353, response);
+                            UDP.UDPSnifferClient(ipVersion, 5353, sourceIPAddress, 5353, response); //  todo check
                         }
                         else
                         {
@@ -153,48 +153,50 @@ namespace Inveigh
             }
 
             byte[] spooferIPData = Program.spooferIPData;
-            MemoryStream memoryStream = new MemoryStream();
 
-            if(String.Equals(method, "sniffer"))
+            using (MemoryStream memoryStream = new MemoryStream())
             {
-                memoryStream.Write((new byte[2] { 0x14, 0xe9 }), 0, 2);
-                memoryStream.Write(sourcePortData, 0, 2);
-                memoryStream.Write((new byte[2] { 0x00, 0x00 }), 0, 2);
-                memoryStream.Write((new byte[2] { 0x00, 0x00 }), 0, 2);
+
+                if (String.Equals(method, "sniffer"))
+                {
+                    memoryStream.Write((new byte[2] { 0x14, 0xe9 }), 0, 2);
+                    memoryStream.Write(sourcePortData, 0, 2);
+                    memoryStream.Write((new byte[2] { 0x00, 0x00 }), 0, 2);
+                    memoryStream.Write((new byte[2] { 0x00, 0x00 }), 0, 2);
+                }
+
+                memoryStream.Write(transactionID, 0, transactionID.Length);
+                memoryStream.Write((new byte[10] { 0x84, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00 }), 0, 10);
+                memoryStream.Write(request, 0, request.Length);
+
+                switch (type)
+                {
+
+                    case "A":
+                        memoryStream.Write((new byte[4] { 0x00, 0x01, 0x80, 0x01 }), 0, 4);
+                        memoryStream.Write(TTL, 0, 4);
+                        memoryStream.Write((new byte[2] { 0x00, 0x04 }), 0, 2);
+                        memoryStream.Write(spooferIPData, 0, spooferIPData.Length);
+                        break;
+
+                    case "AAAA":
+                        memoryStream.Write((new byte[4] { 0x00, 0x1c, 0x80, 0x01 }), 0, 4);
+                        memoryStream.Write(TTL, 0, 4);
+                        memoryStream.Write((new byte[2] { 0x00, 0x10 }), 0, 2);
+                        memoryStream.Write(Program.spooferIPv6Data, 0, Program.spooferIPv6Data.Length);
+                        break;
+
+                }
+
+                if (String.Equals(method, "sniffer"))
+                {
+                    memoryStream.Position = 4;
+                    memoryStream.Write(Util.IntToByteArray2((int)memoryStream.Length), 0, 2);
+                }
+
+                return memoryStream.ToArray();
             }
 
-            switch (type)
-            {
-
-                case "A":
-                    memoryStream.Write(transactionID, 0, transactionID.Length);
-                    memoryStream.Write((new byte[10] { 0x84, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00 }), 0, 10);
-                    memoryStream.Write(request, 0, request.Length);
-                    memoryStream.Write((new byte[4] { 0x00, 0x01, 0x80, 0x01 }), 0, 4);
-                    memoryStream.Write(TTL, 0, 4);
-                    memoryStream.Write((new byte[2] { 0x00, 0x04 }), 0, 2);
-                    memoryStream.Write(spooferIPData, 0, spooferIPData.Length);
-                    break;
-
-                case "AAAA":
-                    memoryStream.Write(transactionID, 0, transactionID.Length);
-                    memoryStream.Write((new byte[10] { 0x84, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00 }), 0, 10);
-                    memoryStream.Write(request, 0, request.Length);
-                    memoryStream.Write((new byte[4] { 0x00, 0x1c, 0x80, 0x01 }), 0, 4);
-                    memoryStream.Write(TTL, 0, 4);
-                    memoryStream.Write((new byte[2] { 0x00, 0x10 }), 0, 2);
-                    memoryStream.Write(Program.spooferIPv6Data, 0, Program.spooferIPv6Data.Length);
-                    break;
-
-            }       
-
-            if (String.Equals(method, "sniffer"))
-            {
-                memoryStream.Position = 4;
-                memoryStream.Write(Util.IntToByteArray2((int)memoryStream.Length), 0, 2);
-            }
-
-            return memoryStream.ToArray();
         }
 
     }
