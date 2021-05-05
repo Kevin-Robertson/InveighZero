@@ -1,6 +1,9 @@
 ![InveighZero_logo](https://user-images.githubusercontent.com/5897462/62184518-7ab31380-b32c-11e9-9470-b3f482bd4577.png)
 
-InveighZero is a C# LLMNR/NBNS/mDNS/DNS/DHCPv6 spoofer and man-in-the-middle tool designed to assist penetration testers/red teamers that find themselves limited to a Windows system. This version shares many features with the PowerShell version of [Inveigh](https://github.com/Kevin-Robertson/Inveigh).         
+InveighZero is a C# LLMNR/NBNS/mDNS/DNS/DHCPv6 spoofer and man-in-the-middle tool designed to assist penetration testers/red teamers that find themselves limited to a Windows system. This version shares many features with the PowerShell version of [Inveigh](https://github.com/Kevin-Robertson/Inveigh).  
+
+## Cross-Platform Version
+* https://github.com/Kevin-Robertson/InveighZero/tree/dev
 
 ## Privileged Mode Features (elevated admin required)  
 * SMB capture - packet sniffer based  
