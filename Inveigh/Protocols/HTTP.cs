@@ -283,7 +283,8 @@ namespace Inveigh
 
                             if ((BitConverter.ToString(httpAuthorization.Skip(8).Take(4).ToArray())).Equals("01-00-00-00"))
                             {
-                                authorizationNTLM = GetNTLMChallengeBase64(method, ntlmESS, sourceIP, sourcePort, httpPort);
+                                authorizationNTLM = Convert.ToBase64String(GetNTLMChallenge(method, ntlmESS, sourceIP, sourcePort, httpPort));
+                                authorizationNTLM = "NTLM " + authorizationNTLM;
                             }
                             else if ((BitConverter.ToString(httpAuthorization.Skip(8).Take(4).ToArray())).Equals("03-00-00-00"))
                             {
@@ -478,11 +479,11 @@ namespace Inveigh
 
         }
 
-        public static string GetNTLMChallengeBase64(string method, bool ntlmESS, string ipAddress, string sourcePort, string destinationPort)
+        public static byte[] GetNTLMChallenge(string method, bool ntlmESS, string ipAddress, string sourcePort, string destinationPort)
         {
             byte[] timestamp = BitConverter.GetBytes(DateTime.Now.ToFileTime());
             byte[] challengeData = new byte[8];
-            string session = ipAddress + ":" + sourcePort;       
+            string session = ipAddress + ":" + sourcePort;
             string challenge = "";
             int destinationPortNumber = Int32.Parse(destinationPort);
 
@@ -504,7 +505,7 @@ namespace Inveigh
             else
             {
                 challenge = Program.argChallenge;
-                string challengeMod = challenge.Insert(2, "-").Insert(5,"-").Insert(8,"-").Insert(11,"-").Insert(14,"-").Insert(17,"-").Insert(20,"-");
+                string challengeMod = challenge.Insert(2, "-").Insert(5, "-").Insert(8, "-").Insert(11, "-").Insert(14, "-").Insert(17, "-").Insert(20, "-");
                 int i = 0;
 
                 foreach (string character in challengeMod.Split('-'))
@@ -522,7 +523,7 @@ namespace Inveigh
 
             string sessionTimestamp = BitConverter.ToString(timestamp).Replace("-", String.Empty);
             Program.httpSessionTable[sessionTimestamp] = challenge;
-            Program.httpSessionTable[session] = challenge;          
+            Program.httpSessionTable[session] = challenge; // todo check   
 
             byte[] ntlmNegotiationFlags = { 0x05, 0x82, 0x81, 0x0A };
 
@@ -531,15 +532,27 @@ namespace Inveigh
                 ntlmNegotiationFlags[2] = 0x89;
             }
 
+            ntlmNegotiationFlags = new byte[4]{ 0x15, 0x82, 0x8a, 0xe2 };
+
             byte[] hostnameData = Encoding.Unicode.GetBytes(Program.computerName);
             byte[] netbiosDomainData = Encoding.Unicode.GetBytes(Program.netbiosDomain);
-            byte[] dnsDomainData = Encoding.Unicode.GetBytes(Program.dnsDomain);
+            byte[] dnsDomainData;
+
+            if (String.IsNullOrEmpty(Program.dnsDomain))
+            {
+                dnsDomainData = Encoding.Unicode.GetBytes(Program.computerName);
+            }
+            else
+            {
+                dnsDomainData = Encoding.Unicode.GetBytes(Program.dnsDomain);
+            }
+
             byte[] dnsHostnameData = Encoding.Unicode.GetBytes(Program.computerName);
             byte[] hostnameLength = BitConverter.GetBytes(hostnameData.Length).Take(2).ToArray();
             byte[] netbiosDomainLength = BitConverter.GetBytes(netbiosDomainData.Length).Take(2).ToArray(); ;
             byte[] dnsDomainLength = BitConverter.GetBytes(dnsDomainData.Length).Take(2).ToArray(); ;
             byte[] dnsHostnameLength = BitConverter.GetBytes(dnsHostnameData.Length).Take(2).ToArray(); ;
-            byte[] targetLength = BitConverter.GetBytes(hostnameData.Length + netbiosDomainData.Length + dnsDomainData.Length + dnsDomainData.Length + dnsHostnameData.Length + 36).Take(2).ToArray(); ;
+            byte[] targetLength = BitConverter.GetBytes(hostnameData.Length + netbiosDomainData.Length + dnsDomainData.Length + dnsHostnameData.Length + 32).Take(2).ToArray(); ;
             byte[] targetOffset = BitConverter.GetBytes(netbiosDomainData.Length + 56);
 
             using (MemoryStream memoryStream = new MemoryStream())
@@ -568,16 +581,15 @@ namespace Inveigh
                 memoryStream.Write((new byte[2] { 0x03, 0x00 }), 0, 2);
                 memoryStream.Write(dnsHostnameLength, 0, 2);
                 memoryStream.Write(dnsHostnameData, 0, dnsHostnameData.Length);
-                memoryStream.Write((new byte[2] { 0x05, 0x00 }), 0, 2);
-                memoryStream.Write(dnsDomainLength, 0, 2);
-                memoryStream.Write(dnsDomainData, 0, dnsDomainData.Length);
+                //memoryStream.Write((new byte[2] { 0x05, 0x00 }), 0, 2);
+                //emoryStream.Write(dnsDomainLength, 0, 2);
+               // memoryStream.Write(dnsDomainData, 0, dnsDomainData.Length);
                 memoryStream.Write((new byte[4] { 0x07, 0x00, 0x08, 0x00 }), 0, 4);
                 memoryStream.Write(timestamp, 0, timestamp.Length);
-                memoryStream.Write((new byte[6] { 0x00, 0x00, 0x00, 0x00, 0x0a, 0x0a }), 0, 6);
-                string ntlmChallengeBase64 = Convert.ToBase64String(memoryStream.ToArray());
-                string ntlm = "NTLM " + ntlmChallengeBase64;
+                memoryStream.Write((new byte[4] { 0x00, 0x00, 0x00, 0x00 }), 0, 4);
+                
 
-                return ntlm;
+                return memoryStream.ToArray();
             }
 
         }

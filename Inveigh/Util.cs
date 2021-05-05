@@ -90,6 +90,28 @@ namespace Inveigh
             return (array == null || array.Length == 0);
         }
 
+        public static byte[] IntToASN1LengthArray(int length)
+        {
+            //todo add ASN.1 code
+            byte[] sectionLength;
+
+            if (length > 255)
+            {
+                sectionLength = new byte[3] { 0x82, 0x00, 0x00 };
+                Buffer.BlockCopy(Util.IntToByteArray2(length), 0, sectionLength, 1, 2);
+            }
+            else if (length > 127)
+            {
+                sectionLength = new byte[2] { 0x81, (byte)length };
+            }
+            else
+            {
+                sectionLength = new byte[1] { (byte)length };
+            }
+
+            return sectionLength;
+        }
+
         public static string GetRecordType(byte[] data)
         {
             string type = "";

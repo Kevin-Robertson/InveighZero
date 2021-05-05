@@ -154,7 +154,8 @@ namespace Inveigh
         public static int runCount = 0; // todo check
         public static int runTime = 0;
         public static bool isSession = false;
-        public static string version = "0.92 Dev 8";
+        public static ulong smb2Session = 5548434740922023936;
+        public static string version = "0.93 Dev 1";
 
         static void Main(string[] args)
         {           
@@ -823,8 +824,8 @@ namespace Inveigh
 
             if (!enabledElevated)
             {
-                enabledSMB = false;
-                enabledSMBv6 = false;
+                //enabledSMB = false;
+                //enabledSMBv6 = false;
             }
 
             if (enabledInspect)
@@ -992,6 +993,8 @@ namespace Inveigh
                 if (enabledLLMNR)
                 {
                     Thread llmnrListenerThread = new Thread(() => LLMNR.LLMNRListener("IPv4", argIP));
+                    //LLMNRListener llmnrListener = new LLMNRListener();
+                    //Thread llmnrListenerThread = new Thread(() => llmnrListener.Start(5355, IPAddress.Any));
                     llmnrListenerThread.Start();
                 }
 
@@ -1037,6 +1040,11 @@ namespace Inveigh
                     Thread icmpv6Thread = new Thread(() => ICMPv6.icmpv6RouterAdvertise());
                     icmpv6Thread.Start();
                 }
+
+                SMBListener smbListener = new SMBListener();
+                Thread smbListenerThread = new Thread(() => smbListener.Start(445,IPAddress.Any));
+                // Thread smbListenerThread = new Thread(() => SMB.SMBListener("SMB", "IPv4", argHTTPIP, "445"));
+                smbListenerThread.Start();
 
             }
 
