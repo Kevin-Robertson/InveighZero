@@ -4,10 +4,10 @@ InveighZero is a C# LLMNR/NBNS/mDNS/DNS/DHCPv6 spoofer and machine-in-the-middle
 
 ## Linux Compile  
 
-* With .net 5.0 installed  
+* With .net 5.0 installed on target system  
 `dotnet publish -r linux-x64 -f net5.0`
 
-* Without .net 5.0 installed  
+* Without .net 5.0 installed on target system  
 `dotnet publish --self-contained=true -p:PublishSingleFile=true -r linux-x64 -f net5.0`
 
 ## Privileged Mode Features (elevated admin required)  
