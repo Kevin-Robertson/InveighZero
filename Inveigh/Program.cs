@@ -141,6 +141,7 @@ namespace Inveigh
             int runCount = 0;
             int runTime = 0;
             int dhcpv6RA = 0;
+            int pid = Process.GetCurrentProcess().Id;
             IList wpadDirectHostsList = new List<string>();
 
             try
@@ -747,6 +748,7 @@ namespace Inveigh
             string version = "0.913";
             string optionStatus = "";
             outputList.Add(String.Format("[*] Inveigh {0} started at {1}", version, DateTime.Now.ToString("s")));
+            outputList.Add(String.Format("[*] Process ID = {0}", pid));
             if (enabledElevated) optionStatus = "Enabled";
             else optionStatus = "Disabled";
             outputList.Add(String.Format("[+] Elevated Privilege Mode = {0}", optionStatus));
